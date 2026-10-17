@@ -31,8 +31,8 @@ export const SITE_CONFIG = {
       icon: "Zap",
     },
     {
-      title: "5 Modelos profissionais",
-      description: "Modelos clássicos para ATS, modernos, minimalistas, para primeiro emprego e tecnologia.",
+      title: "4 Modelos Validados por RH",
+      description: "Modelos clássicos para ATS, jovem aprendiz, modernos com sidebar e linhas corporativas.",
       icon: "FileSpreadsheet",
     },
     {
@@ -55,7 +55,7 @@ export const SITE_CONFIG = {
     {
       step: 2,
       title: "Escolha seu modelo",
-      description: "Escolha um dos 5 modelos profissionais e ajuste cores e fontes em tempo real.",
+      description: "Escolha um dos 4 modelos profissionais e ajuste cores e fontes em tempo real.",
     },
     {
       step: 3,

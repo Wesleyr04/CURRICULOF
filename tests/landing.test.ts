@@ -42,10 +42,10 @@ describe("Landing Page — Copywriting e Posicionamento", () => {
     expect(privacyFaq?.answer).not.toContain("privacidade absoluta");
   });
 
-  it("deve mapear os 5 modelos de currículo para navegação na landing page", () => {
+  it("deve mapear os 4 modelos de currículo para navegação na landing page", () => {
     const featureModels = SITE_CONFIG.features.find((f) => f.title.includes("Modelos"));
     expect(featureModels).toBeDefined();
-    expect(featureModels?.title).toContain("5 Modelos");
+    expect(featureModels?.title).toContain("4 Modelos");
   });
 
   it("deve apontar o fluxo primário da landing page para o Modo Simples", () => {

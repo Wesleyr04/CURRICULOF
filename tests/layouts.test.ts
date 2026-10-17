@@ -2,16 +2,15 @@ import { describe, it, expect } from "vitest";
 import { AVAILABLE_LAYOUTS, INITIAL_RESUME_DATA } from "@/config/layouts";
 import { LayoutType } from "@/types/resume";
 
-describe("Integridade dos 5 Layouts Distintos", () => {
-  it("deve conter exatamente os 5 layouts obrigatórios com IDs distintos", () => {
-    expect(AVAILABLE_LAYOUTS).toHaveLength(5);
+describe("Integridade dos 4 Modelos Validados", () => {
+  it("deve conter exatamente os 4 layouts validados por RH com IDs distintos", () => {
+    expect(AVAILABLE_LAYOUTS).toHaveLength(4);
     const ids = AVAILABLE_LAYOUTS.map((l) => l.id);
     const expectedIds: LayoutType[] = [
+      "first-job",
       "classic-ats",
       "modern",
       "minimalist",
-      "first-job",
-      "tech-specialist",
     ];
 
     expectedIds.forEach((expected) => {
@@ -25,10 +24,10 @@ describe("Integridade dos 5 Layouts Distintos", () => {
     expect(atsLayout?.atsFriendly).toBe(true);
   });
 
-  it("o layout Primeiro Emprego deve estar presente e com descrição adequada", () => {
+  it("o layout Primeiro Emprego deve estar presente e com descrição adequada para início de carreira", () => {
     const firstJobLayout = AVAILABLE_LAYOUTS.find((l) => l.id === "first-job");
     expect(firstJobLayout).toBeDefined();
-    expect(firstJobLayout?.recommendedFor).toContain("Estudantes");
+    expect(firstJobLayout?.recommendedFor).toContain("Estágio");
   });
 
   it("todos os 5 layouts devem ser compatíveis com os dados padrão do currículo", () => {

@@ -102,8 +102,8 @@ export function HeroSection() {
           />
         </div>
 
-        {/* 8. Grade de Acesso Rápido aos 5 Modelos (Abaixo do Carrossel) */}
-        <div className="mt-4 sm:mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 text-left">
+        {/* 8. Grade de Acesso Rápido aos 4 Modelos Validados (Abaixo do Carrossel) */}
+        <div className="mt-4 sm:mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-left">
           {AVAILABLE_LAYOUTS.map((layout) => (
             <div
               key={layout.id}

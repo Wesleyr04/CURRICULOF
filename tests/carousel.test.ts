@@ -5,8 +5,8 @@ import { ModelA4Preview } from "@/components/landing/ModelA4Preview";
 import { SmoothSliderItem } from "@/components/ui/arc-flow-carousel";
 
 describe("Vitrine Interativa em Arco (ArcFlowCarousel & Miniaturas A4)", () => {
-  it("deve fornecer os 5 modelos reais do sistema para o carrossel", () => {
-    expect(AVAILABLE_LAYOUTS).toHaveLength(5);
+  it("deve fornecer os 4 modelos reais do sistema para o carrossel", () => {
+    expect(AVAILABLE_LAYOUTS).toHaveLength(4);
 
     const items: SmoothSliderItem[] = AVAILABLE_LAYOUTS.map((layout) => ({
       id: layout.id,
@@ -16,7 +16,7 @@ describe("Vitrine Interativa em Arco (ArcFlowCarousel & Miniaturas A4)", () => {
       previewNode: React.createElement(ModelA4Preview, { layoutId: layout.id }),
     }));
 
-    expect(items).toHaveLength(5);
+    expect(items).toHaveLength(4);
 
     items.forEach((item) => {
       expect(item.id).toBeDefined();
@@ -28,7 +28,7 @@ describe("Vitrine Interativa em Arco (ArcFlowCarousel & Miniaturas A4)", () => {
     });
   });
 
-  it("deve renderizar com sucesso cada um dos 5 layouts em ModelA4Preview sem erros", () => {
+  it("deve renderizar com sucesso cada um dos 4 layouts em ModelA4Preview sem erros", () => {
     AVAILABLE_LAYOUTS.forEach((layout) => {
       const element = React.createElement(ModelA4Preview, { layoutId: layout.id });
       expect(React.isValidElement(element)).toBe(true);
@@ -42,7 +42,7 @@ describe("Vitrine Interativa em Arco (ArcFlowCarousel & Miniaturas A4)", () => {
 
     // Todos os nomes devem ser únicos
     const uniqueNames = new Set(names);
-    expect(uniqueNames.size).toBe(5);
+    expect(uniqueNames.size).toBe(4);
 
     // Todos os badges devem ser preenchidos
     badges.forEach((b) => expect(b.length).toBeGreaterThan(3));

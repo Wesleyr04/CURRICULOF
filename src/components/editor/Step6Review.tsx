@@ -163,13 +163,13 @@ export function Step6Review({
         </div>
       )}
 
-      {/* 1. Escolha de Layout (Os 5 modelos) */}
+      {/* 1. Escolha de Layout (Os 4 Modelos Validados por RH) */}
       <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-4">
         <div className="flex items-center gap-2">
           <Settings2 className="w-4 h-4 text-blue-900" />
           <h3 className="text-sm font-bold text-slate-900">Escolha o Modelo Visual</h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {AVAILABLE_LAYOUTS.map((layout) => {
             const isSelected = customization.layoutId === layout.id;
             return (

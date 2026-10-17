@@ -37,13 +37,12 @@ export function ResumeRenderer({ data, isPdfView = false }: ResumeRendererProps)
       case "modern":
         return <ModernLayout data={data} isPdfView={isPdfView} />;
       case "minimalist":
+      case "tech-specialist":
         return <MinimalistLayout data={data} isPdfView={isPdfView} />;
       case "first-job":
         return <FirstJobLayout data={data} isPdfView={isPdfView} />;
-      case "tech-specialist":
-        return <TechSpecialistLayout data={data} isPdfView={isPdfView} />;
       default:
-        return <ClassicAtsLayout data={data} isPdfView={isPdfView} />;
+        return <FirstJobLayout data={data} isPdfView={isPdfView} />;
     }
   };
 

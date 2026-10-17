@@ -23,8 +23,8 @@ export function Step1Personal({ data, mode = "simple", onChange, onNext }: Step1
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!data.fullName.trim() || !data.email.trim() || !data.phone.trim()) {
-      alert("Por favor, preencha ao menos Nome, E-mail e Telefone para continuar.");
+    if (!data.fullName.trim() || !data.email.trim() || !data.phone.trim() || !data.city.trim() || !data.state.trim()) {
+      alert("Por favor, preencha Nome Completo, E-mail, Telefone e Cidade/Estado para continuar.");
       return;
     }
     onNext();
@@ -40,15 +40,15 @@ export function Step1Personal({ data, mode = "simple", onChange, onNext }: Step1
           </span>
         </div>
         <p className="text-xs text-slate-500 mt-1">
-          Informe seus dados de contato direto. Mantenha as informações sempre atualizadas.
+          Informe seus dados de contato direto. Recrutadores precisam de telefone, e-mail e localização atualizados.
         </p>
       </div>
 
-      {/* Aviso de Privacidade: Sem documentos sensíveis */}
+      {/* Diretriz de RH e Privacidade: Sem documentos sensíveis */}
       <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-lg flex items-start gap-2.5 text-xs text-blue-900">
         <ShieldAlert className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
         <span>
-          <strong>Privacidade Protegida:</strong> Não solicitamos CPF, RG, endereço residencial de rua, estado civil ou religião.
+          <strong>Diretriz de Recrutamento & Privacidade:</strong> Nunca inclua CPF, RG, endereço completo de rua, estado civil ou religião no currículo. O FastCurrículo bloqueia dados desnecessários e protege suas informações.
         </span>
       </div>
 

@@ -23,12 +23,12 @@ export default function ModelosPage() {
             Escolha o modelo ideal para seu momento profissional
           </h1>
           <p className="mt-3 text-slate-600 text-sm sm:text-base">
-            Todos os 5 modelos foram criados seguindo rigorosos padrões de recrutamento, legibilidade e compatibilidade com leitores automatizados de RH.
+            Todos os 4 modelos foram criados seguindo rigorosos padrões de recrutamento, legibilidade e compatibilidade com leitores automatizados de RH.
           </p>
         </div>
 
-        {/* Grade com os 5 Modelos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {/* Grade com os 4 Modelos Validados */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {AVAILABLE_LAYOUTS.map((layout) => (
             <div
               key={layout.id}
