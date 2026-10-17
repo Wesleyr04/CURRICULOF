@@ -33,16 +33,12 @@ export function Step1Personal({ data, mode = "simple", onChange, onNext }: Step1
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-bold text-slate-900">Etapa 1 — Dados Pessoais</h2>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 uppercase">
-            Modo {mode === "simple" ? "Simples" : "Completo"}
-          </span>
-        </div>
+        <h2 className="text-xl font-bold text-slate-900">Etapa 1 — Dados Pessoais</h2>
         <p className="text-xs text-slate-500 mt-1">
-          Informe seus dados de contato direto. Recrutadores precisam de telefone, e-mail e localização atualizados.
+          Preencha apenas o que fizer sentido para sua trajetória — o FastCurrículo organiza e adapta a estrutura automaticamente para você.
         </p>
       </div>
+
 
       {/* Diretriz de RH e Privacidade: Sem documentos sensíveis */}
       <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-lg flex items-start gap-2.5 text-xs text-blue-900">

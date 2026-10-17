@@ -80,18 +80,12 @@ export function Step2Target({ data, fullData, mode = "simple", onChange, onNext,
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-bold text-slate-900">Etapa 2 — Cargo Pretendido & Objetivo</h2>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 uppercase">
-            Modo {activeMode === "simple" ? "Simples" : "Completo"}
-          </span>
-        </div>
+        <h2 className="text-xl font-bold text-slate-900">Etapa 2 — Cargo Pretendido & Objetivo</h2>
         <p className="text-xs text-slate-500 mt-1">
-          {activeMode === "simple"
-            ? "Defina seu objetivo direto. No Modo Simples, o resumo é opcional e focado em leitura rápida."
-            : "Defina o foco da sua candidatura e elabore um resumo profissional de alto impacto."}
+          Defina o foco da sua candidatura. O resumo profissional é opcional: se você preferir não preencher, o FastCurrículo ajusta a estrutura para valorizar suas qualificações.
         </p>
       </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Cargo Desejado */}

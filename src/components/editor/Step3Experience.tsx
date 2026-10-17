@@ -91,18 +91,12 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-slate-900">Etapa 3 — Experiência Profissional</h2>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 uppercase">
-              Modo {mode === "simple" ? "Simples" : "Completo"}
-            </span>
-          </div>
+          <h2 className="text-xl font-bold text-slate-900">Etapa 3 — Experiência Profissional</h2>
           <p className="text-xs text-slate-500 mt-1">
-            {mode === "simple"
-              ? "Adicione suas experiências principais. Se não possuir, avance diretamente (ideal para 1º emprego)."
-              : "Histórico profissional detalhado com escopo de atividades e realizações."}
+            Adicione suas experiências anteriores. Se estiver em busca do 1º emprego ou estágio, avance diretamente: a plataforma adapta o currículo dando destaque total à sua formação.
           </p>
         </div>
+
 
         <button
           type="button"

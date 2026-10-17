@@ -3,6 +3,7 @@
 import React from "react";
 import { ResumeData } from "@/types/resume";
 import { Phone, Mail, MapPin } from "lucide-react";
+import { calculateSmartLayout } from "@/lib/smart-layout";
 
 interface LayoutProps {
   data: ResumeData;
@@ -12,71 +13,110 @@ interface LayoutProps {
 export function FirstJobLayout({ data }: LayoutProps) {
   const { personal, target, experiences, education, courses, technicalSkills, softSkills, customization } = data;
 
-  const isHidden = (sec: string) => customization.hiddenSections?.includes(sec);
+  const metrics = calculateSmartLayout(data);
+  const primaryColor = customization.primaryColor || "#0f172a";
 
-  // Fallbacks elegantes fiéis ao modelo validado de exemplo
-  const displayName = personal.fullName || "Felipe Mesquita";
-  const displaySubtitle = target.jobTitle || "Jovem Aprendiz | Primeiro Emprego";
-  const displayPhone = personal.phone || "(12) 3456-7890";
-  const displayEmail = personal.email || "ola@grandesite.com.br";
+  const isUserProvided = Boolean(personal.fullName?.trim() || personal.email?.trim());
+
+  // Fallbacks elegantes fiéis ao modelo validado de exemplo apenas se formulário não preenchido
+  const displayName = personal.fullName?.trim() || (isUserProvided ? "" : "Felipe Mesquita");
+  const displaySubtitle = target.jobTitle?.trim() || (isUserProvided ? "" : "Jovem Aprendiz | Primeiro Emprego");
+  const displayPhone = personal.phone?.trim() || (isUserProvided ? "" : "(12) 3456-7890");
+  const displayEmail = personal.email?.trim() || (isUserProvided ? "" : "ola@grandesite.com.br");
   const displayLocation = personal.city && personal.state
     ? `${personal.city}, ${personal.state}`
-    : "Rua Alegre, 123 - Cidade Brasileira";
+    : (isUserProvided ? "" : "Rua Alegre, 123 - Cidade Brasileira");
+
+  const fullSummary = target.summary?.trim() || (isUserProvided ? "" : "Busco oportunidade como Jovem Aprendiz para desenvolver habilidades práticas em rotinas administrativas e atendimento. Comprometido com aprendizado rápido, pontualidade e dedicação para contribuir positivamente com a equipe.");
+  const displaySummary = fullSummary;
+
+  const displayedTechSkills = technicalSkills.filter((s) => s && s.trim());
+  const displayedSoftSkills = softSkills.filter((s) => s && s.trim());
+
+  const showSummary = Boolean(displaySummary);
+  const showEducation = education.length > 0 || !isUserProvided;
+  const showCourses = courses.length > 0 || (!isUserProvided && !metrics.hasExperiences);
+  const showSkills = displayedTechSkills.length > 0 || displayedSoftSkills.length > 0 || !isUserProvided;
+  const showExperiences = experiences.length > 0 || (!isUserProvided && metrics.hasExperiences);
 
   return (
     <div
       className="w-full bg-white text-slate-900 leading-normal p-8 sm:p-10 select-text"
       style={{
-        fontSize: customization.fontSize === "sm" ? "12px" : customization.fontSize === "lg" ? "14px" : "13px",
+        fontSize: metrics.fontSizePx,
       }}
     >
       {/* Cabeçalho Literal Modelo 1: Esquerda Nome/Subtítulo, Direita Contatos com Ícones */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b-2 border-slate-900">
+      <header
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b-2"
+        style={{ borderColor: primaryColor }}
+      >
         <div className="space-y-0.5">
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 uppercase">
-            {displayName}
+          <h1
+            className="text-2xl sm:text-3xl font-extrabold tracking-tight uppercase"
+            style={{ color: primaryColor }}
+          >
+            {displayName || "Seu Nome Completo"}
           </h1>
-          <p className="text-xs sm:text-sm font-semibold text-slate-700 tracking-wide">
-            {displaySubtitle}
-          </p>
+          {displaySubtitle && (
+            <p className="text-xs sm:text-sm font-semibold text-slate-700 tracking-wide">
+              {displaySubtitle}
+            </p>
+          )}
         </div>
 
         {/* Lista vertical compacta de contatos com ícones discretos */}
         <div className="text-[11px] sm:text-xs text-slate-700 space-y-1 sm:text-right shrink-0">
-          <div className="flex items-center sm:justify-end gap-1.5">
-            <Phone className="w-3.5 h-3.5 text-slate-800 shrink-0" />
-            <span>{displayPhone}</span>
-          </div>
-          <div className="flex items-center sm:justify-end gap-1.5">
-            <Mail className="w-3.5 h-3.5 text-slate-800 shrink-0" />
-            <span>{displayEmail}</span>
-          </div>
-          <div className="flex items-center sm:justify-end gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-slate-800 shrink-0" />
-            <span>{displayLocation}</span>
-          </div>
+          {displayPhone && (
+            <div className="flex items-center sm:justify-end gap-1.5">
+              <Phone className="w-3.5 h-3.5 shrink-0" style={{ color: primaryColor }} />
+              <span>{displayPhone}</span>
+            </div>
+          )}
+          {displayEmail && (
+            <div className="flex items-center sm:justify-end gap-1.5">
+              <Mail className="w-3.5 h-3.5 shrink-0" style={{ color: primaryColor }} />
+              <span>{displayEmail}</span>
+            </div>
+          )}
+          {displayLocation && (
+            <div className="flex items-center sm:justify-end gap-1.5">
+              <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: primaryColor }} />
+              <span>{displayLocation}</span>
+            </div>
+          )}
+          {personal.linkedin && (
+            <div className="text-[10px] text-slate-500">
+              {personal.linkedin.replace(/^https?:\/\/(www\.)?/, "")}
+            </div>
+          )}
         </div>
       </header>
 
-      {/* Conteúdo em 1 Coluna Enxuta */}
-      <div className="pt-4 space-y-4">
+      {/* Conteúdo em 1 Coluna Enxuta com auto-adaptação */}
+      <div className={`pt-4 ${metrics.density === "compact" ? "space-y-3.5" : "space-y-5"}`}>
         {/* 1. Objetivo Profissional */}
-        {!isHidden("summary") && (
+        {showSummary && (
           <section>
-            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-950 pb-1 border-b border-slate-300">
+            <h2
+              className="text-xs sm:text-sm font-bold uppercase tracking-wider pb-1 border-b"
+              style={{ color: primaryColor, borderColor: "#cbd5e1" }}
+            >
               Objetivo Profissional
             </h2>
             <p className="mt-1.5 text-xs text-slate-700 leading-relaxed text-justify">
-              {target.summary ||
-                "Busco oportunidade como Jovem Aprendiz para desenvolver habilidades práticas em rotinas administrativas e atendimento. Comprometido com aprendizado rápido, pontualidade e dedicação para contribuir positivamente com a equipe."}
+              {displaySummary}
             </p>
           </section>
         )}
 
         {/* 2. Formação Acadêmica */}
-        {!isHidden("education") && (
+        {showEducation && (
           <section>
-            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-950 pb-1 border-b border-slate-300">
+            <h2
+              className="text-xs sm:text-sm font-bold uppercase tracking-wider pb-1 border-b"
+              style={{ color: primaryColor, borderColor: "#cbd5e1" }}
+            >
               Formação Acadêmica
             </h2>
             <div className="mt-2 space-y-2">
@@ -86,15 +126,12 @@ export function FirstJobLayout({ data }: LayoutProps) {
                     <div className="flex justify-between items-baseline">
                       <span className="font-bold text-slate-900">{edu.course || edu.degree || "Ensino Médio"}</span>
                       <span className="text-slate-600 text-[11px]">
-                        Conclusão: {edu.endDate || "Dez/2025"}
+                        {edu.endDate ? `Conclusão: ${edu.endDate}` : ""}
                       </span>
                     </div>
                     <div className="text-slate-700 text-[11px]">
-                      {edu.institution || "Escola Estadual Brasileira"}
+                      {edu.institution || "Instituição de Ensino"}
                     </div>
-                    <p className="text-[11px] text-slate-600 mt-0.5">
-                      <strong className="text-slate-800">Destaque:</strong> Participação ativa em feira de ciências e representação de turma com foco em trabalho em equipe.
-                    </p>
                   </div>
                 ))
               ) : (
@@ -104,9 +141,6 @@ export function FirstJobLayout({ data }: LayoutProps) {
                     <span className="text-slate-600 text-[11px]">Conclusão: Dez/2025</span>
                   </div>
                   <div className="text-slate-700 text-[11px]">Colégio Estadual Presidente Kennedy</div>
-                  <p className="text-[11px] text-slate-600 mt-0.5">
-                    <strong className="text-slate-800">Destaque:</strong> Monitoria de matemática e representação de turma.
-                  </p>
                 </div>
               )}
             </div>
@@ -114,9 +148,12 @@ export function FirstJobLayout({ data }: LayoutProps) {
         )}
 
         {/* 3. Cursos Complementares (2 subcolunas limpas) */}
-        {!isHidden("courses") && (
+        {showCourses && (
           <section>
-            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-950 pb-1 border-b border-slate-300">
+            <h2
+              className="text-xs sm:text-sm font-bold uppercase tracking-wider pb-1 border-b"
+              style={{ color: primaryColor, borderColor: "#cbd5e1" }}
+            >
               Cursos Complementares
             </h2>
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
@@ -145,37 +182,55 @@ export function FirstJobLayout({ data }: LayoutProps) {
           </section>
         )}
 
-        {/* 4. Habilidades e Competências (Técnicas e Comportamentais) */}
-        {(!isHidden("technicalSkills") || !isHidden("softSkills")) && (
+        {/* 4. Habilidades e Competências */}
+        {showSkills && (
           <section>
-            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-950 pb-1 border-b border-slate-300">
+            <h2
+              className="text-xs sm:text-sm font-bold uppercase tracking-wider pb-1 border-b"
+              style={{ color: primaryColor, borderColor: "#cbd5e1" }}
+            >
               Habilidades e Competências
             </h2>
             <div className="mt-2 space-y-1.5 text-xs text-slate-800">
-              <div>
-                <strong className="text-slate-950">• Técnicas:</strong>{" "}
-                <span className="text-slate-700">
-                  {technicalSkills.length > 0
-                    ? technicalSkills.join(", ")
-                    : "Word, Excel básico, digitação rápida, navegação na internet e organização de arquivos digitais."}
-                </span>
-              </div>
-              <div>
-                <strong className="text-slate-950">• Comportamentais:</strong>{" "}
-                <span className="text-slate-700">
-                  {softSkills.length > 0
-                    ? softSkills.join(", ")
-                    : "Pontualidade, vontade de aprender, boa comunicação interpessoal, facilidade para trabalhar em equipe e empatia."}
-                </span>
-              </div>
+              {displayedTechSkills.length > 0 && (
+                <div>
+                  <strong className="text-slate-950">• Técnicas:</strong>{" "}
+                  <span className="text-slate-700">
+                    {displayedTechSkills.join(", ")}
+                  </span>
+                </div>
+              )}
+              {displayedSoftSkills.length > 0 && (
+                <div>
+                  <strong className="text-slate-950">• Comportamentais:</strong>{" "}
+                  <span className="text-slate-700">
+                    {displayedSoftSkills.join(", ")}
+                  </span>
+                </div>
+              )}
+              {!isUserProvided && displayedTechSkills.length === 0 && displayedSoftSkills.length === 0 && (
+                <>
+                  <div>
+                    <strong className="text-slate-950">• Técnicas:</strong>{" "}
+                    <span className="text-slate-700">Word, Excel básico, digitação rápida e organização de arquivos digitais.</span>
+                  </div>
+                  <div>
+                    <strong className="text-slate-950">• Comportamentais:</strong>{" "}
+                    <span className="text-slate-700">Pontualidade, vontade de aprender, boa comunicação interpessoal e trabalho em equipe.</span>
+                  </div>
+                </>
+              )}
             </div>
           </section>
         )}
 
         {/* 5. Atividades Extracurriculares e Voluntariado */}
-        {(!isHidden("experience") || experiences.length > 0) && (
+        {showExperiences && (
           <section>
-            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-950 pb-1 border-b border-slate-300">
+            <h2
+              className="text-xs sm:text-sm font-bold uppercase tracking-wider pb-1 border-b"
+              style={{ color: primaryColor, borderColor: "#cbd5e1" }}
+            >
               Atividades Extracurriculares e Voluntariado
             </h2>
             <div className="mt-2 space-y-2 text-xs">

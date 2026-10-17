@@ -3,6 +3,7 @@
 import React from "react";
 import { ResumeData } from "@/types/resume";
 import { Phone, Mail, MapPin, User } from "lucide-react";
+import { calculateSmartLayout } from "@/lib/smart-layout";
 
 interface LayoutProps {
   data: ResumeData;
@@ -12,110 +13,163 @@ interface LayoutProps {
 export function ClassicAtsLayout({ data }: LayoutProps) {
   const { personal, target, experiences, education, courses, languages, customization } = data;
 
-  const isHidden = (sec: string) => customization.hiddenSections?.includes(sec);
+  const metrics = calculateSmartLayout(data);
+  const primaryColor = customization.primaryColor || "#0f172a";
 
-  // Fallbacks literais de exemplo baseados na persona Cíntia Campos
-  const displayName = personal.fullName || "Cíntia Campos";
-  const displayJobTitle = target.jobTitle || "Vendedora / Atendente Comercial";
-  const displayPhone = personal.phone || "(11) 97654-3210";
-  const displayEmail = personal.email || "cintia.campos@email.com";
+  const isUserProvided = Boolean(personal.fullName?.trim() || personal.email?.trim());
+
+  // Fallbacks literais de exemplo baseados na persona Cíntia Campos apenas se não preenchido
+  const displayName = personal.fullName?.trim() || (isUserProvided ? "" : "Cíntia Campos");
+  const displayJobTitle = target.jobTitle?.trim() || (isUserProvided ? "" : "Vendedora / Atendente Comercial");
+  const displayPhone = personal.phone?.trim() || (isUserProvided ? "" : "(11) 97654-3210");
+  const displayEmail = personal.email?.trim() || (isUserProvided ? "" : "cintia.campos@email.com");
   const displayLocation = personal.city && personal.state
     ? `${personal.city}, ${personal.state}`
-    : "São Paulo, SP";
+    : (isUserProvided ? "" : "São Paulo, SP");
+
+  const fullSummary = target.summary?.trim() || (isUserProvided ? "" : "Profissional com sólida vivência em atendimento presencial, organização de ponto de venda, caixa e suporte comercial. Facilidade em comunicação, pontualidade rigorosa e agilidade em resolução de dúvidas de clientes.");
+  const displaySummary = fullSummary;
+
+  const showJobTitle = Boolean(displayJobTitle);
+  const showSummary = Boolean(displaySummary);
+  const showExperiences = experiences.length > 0 || (!isUserProvided && metrics.hasExperiences);
+  const showEducation = education.length > 0 || !isUserProvided;
+  const showCourses = courses.length > 0 || (!isUserProvided && !metrics.hasExperiences);
+  const showLanguages = languages.length > 0;
 
   return (
     <div
       className="w-full bg-white text-slate-900 leading-normal relative select-text"
       style={{
-        fontSize: customization.fontSize === "sm" ? "12px" : customization.fontSize === "lg" ? "14px" : "13px",
+        fontSize: metrics.fontSizePx,
       }}
     >
-      {/* Detalhe Geométrico Diagonal Preto/Grafite no Canto Superior Esquerdo */}
+      {/* Detalhe Geométrico Diagonal no Canto Superior Esquerdo na cor de destaque ativa */}
       <div
-        className="absolute top-0 left-0 w-32 h-16 bg-slate-950 pointer-events-none"
+        className="absolute top-0 left-0 w-32 h-16 pointer-events-none transition-colors"
         style={{
           clipPath: "polygon(0 0, 100% 0, 0 100%)",
+          backgroundColor: primaryColor,
         }}
         aria-hidden="true"
       />
 
-      {/* Cabeçalho: Foto Circular à Esquerda + Nome e Contatos com Ícones Circulares Pretos */}
+      {/* Cabeçalho: Foto/Avatar à Esquerda + Nome e Contatos com Ícones Circulares */}
       <header className="p-8 sm:p-10 pb-5 flex flex-col sm:flex-row items-center sm:items-start gap-5 border-b border-slate-300">
-        {/* Foto circular (se fornecida, ou avatar limpo com iniciais) */}
         {personal.photoUrl ? (
           <img
             src={personal.photoUrl}
             alt={displayName}
-            className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-slate-900 shadow-xs shrink-0"
+            className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 shadow-xs shrink-0"
+            style={{ borderColor: primaryColor }}
           />
-        ) : (
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-100 border-2 border-slate-900 flex items-center justify-center text-slate-800 font-bold text-lg shrink-0">
-            {displayName.split(" ").map(n => n[0]).slice(0, 2).join("") || <User className="w-8 h-8 text-slate-500" />}
+        ) : !isUserProvided ? (
+          <div
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-100 border-2 flex items-center justify-center text-slate-800 font-bold text-lg shrink-0 shadow-xs"
+            style={{ borderColor: primaryColor }}
+          >
+            {displayName.split(" ").map((n) => n[0]).slice(0, 2).join("") || <User className="w-8 h-8 text-slate-500" />}
           </div>
-        )}
+        ) : displayName ? (
+          <div
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-100 border-2 flex items-center justify-center text-slate-800 font-bold text-lg shrink-0 shadow-xs"
+            style={{ borderColor: primaryColor }}
+          >
+            {displayName.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+          </div>
+        ) : null}
 
         <div className="flex-1 text-center sm:text-left space-y-1.5">
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 uppercase">
-            {displayName}
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight uppercase" style={{ color: primaryColor }}>
+            {displayName || "Seu Nome Completo"}
           </h1>
 
-          {/* Contatos com Ícones Circulares Pretos */}
+          {/* Contatos com Ícones Circulares na cor de destaque ativa */}
           <div className="flex flex-wrap justify-center sm:justify-start items-center gap-x-4 gap-y-1.5 text-xs text-slate-700 pt-1">
-            <div className="flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded-full bg-slate-950 text-white flex items-center justify-center shrink-0">
-                <Phone className="w-2.5 h-2.5" />
-              </span>
-              <span>{displayPhone}</span>
-            </div>
+            {displayPhone && (
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="w-5 h-5 rounded-full text-white flex items-center justify-center shrink-0 shadow-2xs"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <Phone className="w-2.5 h-2.5" />
+                </span>
+                <span>{displayPhone}</span>
+              </div>
+            )}
 
-            <div className="flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded-full bg-slate-950 text-white flex items-center justify-center shrink-0">
-                <Mail className="w-2.5 h-2.5" />
-              </span>
-              <span>{displayEmail}</span>
-            </div>
+            {displayEmail && (
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="w-5 h-5 rounded-full text-white flex items-center justify-center shrink-0 shadow-2xs"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <Mail className="w-2.5 h-2.5" />
+                </span>
+                <span>{displayEmail}</span>
+              </div>
+            )}
 
-            <div className="flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded-full bg-slate-950 text-white flex items-center justify-center shrink-0">
-                <MapPin className="w-2.5 h-2.5" />
+            {displayLocation && (
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="w-5 h-5 rounded-full text-white flex items-center justify-center shrink-0 shadow-2xs"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <MapPin className="w-2.5 h-2.5" />
+                </span>
+                <span>{displayLocation}</span>
+              </div>
+            )}
+
+            {personal.linkedin && (
+              <span className="text-[11px] text-slate-600">
+                • {personal.linkedin.replace(/^https?:\/\/(www\.)?/, "")}
               </span>
-              <span>{displayLocation}</span>
-            </div>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Seções em Fluxo Direto e Super Objetivo */}
-      <div className="p-8 sm:p-10 pt-4 space-y-4">
+      {/* Seções em Fluxo Direto com espaçamento adaptado */}
+      <div className={`p-8 sm:p-10 pt-4 ${metrics.density === "compact" ? "space-y-3.5" : "space-y-5"}`}>
         {/* 1. Objetivo (Direto ao ponto) */}
-        {!isHidden("summary") && (
+        {showJobTitle && (
           <section>
-            <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-950 pb-1 border-b-2 border-slate-900">
+            <h2
+              className="text-xs sm:text-sm font-extrabold uppercase tracking-wider pb-1 border-b-2"
+              style={{ color: primaryColor, borderColor: primaryColor }}
+            >
               Objetivo
             </h2>
             <p className="mt-1.5 text-xs text-slate-800 font-medium">
-              Atuação na área de <strong className="text-slate-950">{displayJobTitle}</strong>, com foco em excelência no atendimento ao cliente, negociação e alcance de metas.
+              Atuação na área de <strong style={{ color: primaryColor }}>{displayJobTitle}</strong>, com foco em excelência no atendimento ao cliente, negociação e alcance de metas.
             </p>
           </section>
         )}
 
-        {/* 2. Qualificação Profissional (2 a 3 linhas objetivas) */}
-        {!isHidden("summary") && (
+        {/* 2. Qualificação Profissional */}
+        {showSummary && (
           <section>
-            <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-950 pb-1 border-b-2 border-slate-900">
+            <h2
+              className="text-xs sm:text-sm font-extrabold uppercase tracking-wider pb-1 border-b-2"
+              style={{ color: primaryColor, borderColor: primaryColor }}
+            >
               Qualificação Profissional
             </h2>
             <p className="mt-1.5 text-xs text-slate-700 leading-relaxed text-justify">
-              {target.summary ||
-                "Profissional com sólida vivência em atendimento presencial, organização de ponto de venda, caixa e suporte comercial. Facilidade em comunicação, pontualidade rigorosa e agilidade em resolução de dúvidas de clientes."}
+              {displaySummary}
             </p>
           </section>
         )}
 
-        {/* 3. Experiência Profissional (Bullets diretos com tempo de atuação, empresa e resultado) */}
-        {!isHidden("experience") && (
+        {/* 3. Experiência Profissional */}
+        {showExperiences && (
           <section>
-            <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-950 pb-1 border-b-2 border-slate-900">
+            <h2
+              className="text-xs sm:text-sm font-extrabold uppercase tracking-wider pb-1 border-b-2"
+              style={{ color: primaryColor, borderColor: primaryColor }}
+            >
               Experiência Profissional
             </h2>
             <div className="mt-2 space-y-2.5">
@@ -166,9 +220,12 @@ export function ClassicAtsLayout({ data }: LayoutProps) {
         )}
 
         {/* 4. Formação */}
-        {!isHidden("education") && (
+        {showEducation && (
           <section>
-            <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-950 pb-1 border-b-2 border-slate-900">
+            <h2
+              className="text-xs sm:text-sm font-extrabold uppercase tracking-wider pb-1 border-b-2"
+              style={{ color: primaryColor, borderColor: primaryColor }}
+            >
               Formação
             </h2>
             <div className="mt-2 space-y-1.5 text-xs">
@@ -180,7 +237,7 @@ export function ClassicAtsLayout({ data }: LayoutProps) {
                       <span className="text-slate-600 text-[11px]"> — {edu.institution}</span>
                     </div>
                     <span className="text-slate-500 text-[11px]">
-                      {edu.status === "concluido" ? "Concluído" : "Em andamento"} ({edu.endDate || "2023"})
+                      {edu.status === "concluido" ? "Concluído" : "Em andamento"} ({edu.endDate || ""})
                     </span>
                   </div>
                 ))
@@ -197,17 +254,20 @@ export function ClassicAtsLayout({ data }: LayoutProps) {
           </section>
         )}
 
-        {/* 5. Cursos adicionais (Ano - Nome do curso (Instituição)) */}
-        {!isHidden("courses") && (
+        {/* 5. Cursos adicionais */}
+        {showCourses && (
           <section>
-            <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-950 pb-1 border-b-2 border-slate-900">
+            <h2
+              className="text-xs sm:text-sm font-extrabold uppercase tracking-wider pb-1 border-b-2"
+              style={{ color: primaryColor, borderColor: primaryColor }}
+            >
               Cursos adicionais
             </h2>
             <div className="mt-2 space-y-1 text-xs text-slate-800">
               {courses.length > 0 ? (
                 courses.map((course) => (
                   <p key={course.id}>
-                    • {course.year || "2023"} - {course.name} ({course.institution})
+                    • {course.year ? `${course.year} - ` : ""}{course.name} ({course.institution})
                   </p>
                 ))
               ) : (
@@ -222,9 +282,12 @@ export function ClassicAtsLayout({ data }: LayoutProps) {
         )}
 
         {/* 6. Idiomas */}
-        {!isHidden("languages") && (
+        {showLanguages && (
           <section>
-            <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-950 pb-1 border-b-2 border-slate-900">
+            <h2
+              className="text-xs sm:text-sm font-extrabold uppercase tracking-wider pb-1 border-b-2"
+              style={{ color: primaryColor, borderColor: primaryColor }}
+            >
               Idiomas
             </h2>
             <div className="mt-2 text-xs text-slate-800">

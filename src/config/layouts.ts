@@ -152,8 +152,12 @@ export const INITIAL_RESUME_DATA: ResumeData = {
 
 export const COLOR_PALETTES = [
   { name: "Azul Marinho (Padrão)", value: "#1e3a8a", borderClass: "border-blue-900" },
+  { name: "Amarelo Ouro / Mostarda", value: "#d97706", borderClass: "border-amber-600" },
+  { name: "Marrom Executivo", value: "#6e5034", borderClass: "border-amber-900" },
   { name: "Grafite Clássico", value: "#334155", borderClass: "border-slate-700" },
   { name: "Verde Floresta", value: "#14532d", borderClass: "border-green-900" },
   { name: "Bordô Nobre", value: "#831843", borderClass: "border-pink-900" },
   { name: "Azul Petróleo", value: "#0f766e", borderClass: "border-teal-700" },
 ];
+
+

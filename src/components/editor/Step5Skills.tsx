@@ -122,25 +122,13 @@ export function Step5Skills({
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Etapa 5 — Habilidades, Cursos & Idiomas</h2>
-          <p className="text-xs text-slate-500 mt-1">
-            {mode === "simple"
-              ? "Destaque suas ferramentas e cursos essenciais de forma direta."
-              : "Destaque suas ferramentas de trabalho, certificações e outros conhecimentos relevantes."}
-          </p>
-        </div>
-        <span
-          className={`self-start sm:self-auto text-[11px] font-bold px-2.5 py-1 rounded-full border ${
-            mode === "simple"
-              ? "bg-blue-50 text-blue-900 border-blue-200"
-              : "bg-slate-100 text-slate-800 border-slate-300"
-          }`}
-        >
-          {mode === "simple" ? "Modo Simples (Objetivo)" : "Modo Completo (Avançado)"}
-        </span>
+      <div>
+        <h2 className="text-xl font-bold text-slate-900">Etapa 5 — Habilidades, Cursos & Conhecimentos</h2>
+        <p className="text-xs text-slate-500 mt-1">
+          Destaque suas ferramentas de trabalho e cursos. Preencha apenas o que possuir — seções não preenchidas serão omitidas silenciosamente.
+        </p>
       </div>
+
 
       {/* 1. Competências Técnicas */}
       <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-3">

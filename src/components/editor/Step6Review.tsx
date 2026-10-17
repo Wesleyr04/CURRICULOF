@@ -19,7 +19,9 @@ import {
   ShieldCheck,
   FileText,
   SlidersHorizontal,
+  Zap,
 } from "lucide-react";
+
 import { SITE_CONFIG } from "@/config/site";
 
 interface Step6Props {
@@ -46,8 +48,21 @@ export function Step6Review({
 
   const { customization } = resumeData;
 
+  const DEFAULT_LAYOUT_COLORS: Record<string, string> = {
+    "first-job": "#334155",
+    "classic-ats": "#0f172a",
+    "modern": "#6e5034",
+    "minimalist": "#1e3a8a",
+    "tech-specialist": "#0f766e",
+  };
+
   const setLayout = (layoutId: LayoutType) => {
-    onUpdateCustomization({ ...customization, layoutId });
+    const modelDefaultColor = DEFAULT_LAYOUT_COLORS[layoutId] || "#1e3a8a";
+    onUpdateCustomization({
+      ...customization,
+      layoutId,
+      primaryColor: modelDefaultColor,
+    });
   };
 
   const setColor = (primaryColor: string) => {
@@ -56,19 +71,6 @@ export function Step6Review({
 
   const setFont = (fontFamily: "sans" | "serif" | "mono") => {
     onUpdateCustomization({ ...customization, fontFamily });
-  };
-
-  const setFontSize = (fontSize: "sm" | "base" | "lg") => {
-    onUpdateCustomization({ ...customization, fontSize });
-  };
-
-  const toggleSectionVisibility = (secKey: string) => {
-    const currentHidden = customization.hiddenSections || [];
-    const isHidden = currentHidden.includes(secKey);
-    const updated = isHidden
-      ? currentHidden.filter((s) => s !== secKey)
-      : [...currentHidden, secKey];
-    onUpdateCustomization({ ...customization, hiddenSections: updated });
   };
 
   const handleFullAiImprovement = async () => {
@@ -99,60 +101,22 @@ export function Step6Review({
     }
   };
 
-  const sectionsList = [
-    { key: "summary", label: "Resumo Profissional" },
-    { key: "experience", label: "Experiências Profissionais" },
-    { key: "education", label: "Formação Acadêmica" },
-    { key: "technicalSkills", label: "Competências Técnicas" },
-    { key: "softSkills", label: "Competências Interpessoais" },
-    { key: "certifications", label: "Certificações" },
-    { key: "courses", label: "Cursos Livres" },
-    { key: "languages", label: "Idiomas" },
-  ];
-
-  const currentMode: CreationMode = resumeData.creationMode || "simple";
-
   return (
-    <div className="space-y-8">
-      {/* Cabeçalho com Seletor Rápido de Modo */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-200">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Etapa 6 — Revisão e Personalização</h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Ajuste o layout, cores e fontes em tempo real. Você pode alternar os modelos sem perder nenhum dado.
-          </p>
-        </div>
+    <div className="space-y-6">
+      {/* Cabeçalho da Etapa 6 */}
+      <div className="pb-4 border-b border-slate-200">
+        <h2 className="text-xl font-bold text-slate-900">Etapa 6 — Revisão e Personalização</h2>
+        <p className="text-xs text-slate-500 mt-1">
+          A plataforma adapta e estrutura seu currículo automaticamente. Escolha sua referência visual, cor de destaque e tipografia.
+        </p>
+      </div>
 
-        {onChangeMode && (
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 border border-slate-300 rounded-lg shrink-0">
-            <span className="text-[11px] font-semibold text-slate-500 px-2 flex items-center gap-1">
-              <SlidersHorizontal className="w-3 h-3 text-slate-600" />
-              <span>Modo:</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => onChangeMode("simple")}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                currentMode === "simple"
-                  ? "bg-white text-blue-900 shadow-xs border border-blue-200 font-bold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Simples
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeMode("complete")}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                currentMode === "complete"
-                  ? "bg-white text-blue-900 shadow-xs border border-blue-200 font-bold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Completo
-            </button>
-          </div>
-        )}
+      {/* Banner de Adaptação Inteligente Ativa */}
+      <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl flex items-start sm:items-center gap-3 text-xs text-blue-950 shadow-2xs">
+        <Sparkles className="w-5 h-5 text-blue-700 shrink-0 mt-0.5 sm:mt-0" />
+        <div>
+          <span className="font-bold">Adaptação Inteligente Ativa:</span> O FastCurrículo calcula e ajusta automaticamente os espaçamentos e a densidade de texto para que suas informações fiquem harmônicas e perfeitamente equilibradas em 1 página A4.
+        </div>
       </div>
 
       {/* Alerta de Sucesso da IA */}
@@ -163,13 +127,18 @@ export function Step6Review({
         </div>
       )}
 
-      {/* 1. Escolha de Layout (Os 4 Modelos Validados por RH) */}
-      <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-4">
-        <div className="flex items-center gap-2">
-          <Settings2 className="w-4 h-4 text-blue-900" />
-          <h3 className="text-sm font-bold text-slate-900">Escolha o Modelo Visual</h3>
+      {/* 1. Escolha de Layout (Os 4 Modelos Pré-definidos) */}
+      <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <Settings2 className="w-4 h-4 text-blue-900" />
+            <h3 className="text-sm font-bold text-slate-900">1. Referência Visual de Layout</h3>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Escolha uma referência visual. O FastCurrículo adapta automaticamente as seções de acordo com as informações que você preencheu.
+          </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
           {AVAILABLE_LAYOUTS.map((layout) => {
             const isSelected = customization.layoutId === layout.id;
             return (
@@ -202,14 +171,17 @@ export function Step6Review({
         </div>
       </div>
 
-      {/* 2. Cores, Fontes e Tamanhos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Cores */}
+      {/* 2. Cores e Tipografia (Foco nos Controles Essenciais) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Cores de Destaque (Incluindo Amarelo) */}
         <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-3">
           <div className="flex items-center gap-2">
             <Palette className="w-4 h-4 text-blue-900" />
-            <h3 className="text-sm font-bold text-slate-900">Cor Principal de Destaque</h3>
+            <h3 className="text-sm font-bold text-slate-900">2. Cor Principal de Destaque</h3>
           </div>
+          <p className="text-[11px] text-slate-500">
+            Aplica-se imediatamente a títulos, linhas divisórias e barras laterais.
+          </p>
           <div className="flex flex-wrap gap-2.5 pt-1">
             {COLOR_PALETTES.map((palette) => {
               const isSelected = customization.primaryColor === palette.value;
@@ -219,7 +191,7 @@ export function Step6Review({
                   type="button"
                   onClick={() => setColor(palette.value)}
                   className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                    isSelected ? "ring-3 ring-blue-500 ring-offset-2 scale-110" : "hover:scale-105"
+                    isSelected ? "ring-3 ring-blue-500 ring-offset-2 scale-110 shadow-xs" : "hover:scale-105"
                   }`}
                   style={{ backgroundColor: palette.value }}
                   title={palette.name}
@@ -235,9 +207,12 @@ export function Step6Review({
         <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-3">
           <div className="flex items-center gap-2">
             <Type className="w-4 h-4 text-blue-900" />
-            <h3 className="text-sm font-bold text-slate-900">Família de Fonte</h3>
+            <h3 className="text-sm font-bold text-slate-900">3. Família de Fonte</h3>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <p className="text-[11px] text-slate-500">
+            Tipografia profissional otimizada para sistemas de triagem ATS e leitura humana.
+          </p>
+          <div className="grid grid-cols-3 gap-2 pt-1">
             <button
               type="button"
               onClick={() => setFont("sans")}
@@ -272,91 +247,21 @@ export function Step6Review({
               Mono (Técnica)
             </button>
           </div>
-
-          <div className="pt-2">
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">
-              Tamanho do Texto (Densidade de Página)
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setFontSize("sm")}
-                className={`py-1.5 text-xs rounded border text-center ${
-                  customization.fontSize === "sm"
-                    ? "border-blue-900 bg-blue-50 font-bold text-blue-950"
-                    : "border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                Compacto
-              </button>
-              <button
-                type="button"
-                onClick={() => setFontSize("base")}
-                className={`py-1.5 text-xs rounded border text-center ${
-                  customization.fontSize === "base"
-                    ? "border-blue-900 bg-blue-50 font-bold text-blue-950"
-                    : "border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                Padrão (Recomendado)
-              </button>
-              <button
-                type="button"
-                onClick={() => setFontSize("lg")}
-                className={`py-1.5 text-xs rounded border text-center ${
-                  customization.fontSize === "lg"
-                    ? "border-blue-900 bg-blue-50 font-bold text-blue-950"
-                    : "border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                Expandido
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* 3. Visibilidade das Seções */}
-      <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-3">
-        <h3 className="text-sm font-bold text-slate-900">Seções Visíveis no Currículo</h3>
-        <p className="text-xs text-slate-500">
-          Você pode desmarcar seções que não deseja exibir no documento final.
-        </p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-          {sectionsList.map((sec) => {
-            const isVisible = !customization.hiddenSections?.includes(sec.key);
-            return (
-              <label
-                key={sec.key}
-                className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer text-xs"
-              >
-                <input
-                  type="checkbox"
-                  checked={isVisible}
-                  onChange={() => toggleSectionVisibility(sec.key)}
-                  className="rounded border-slate-300 text-blue-900 focus:ring-blue-800"
-                />
-                <span className={isVisible ? "text-slate-900 font-medium" : "text-slate-400"}>
-                  {sec.label}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 4. Aprimoramento Geral com IA */}
+      {/* 3. Aprimoramento com IA */}
       <div className="p-5 bg-gradient-to-r from-blue-900 to-indigo-950 text-white rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
         <div>
           <div className="flex items-center gap-1.5 text-blue-300 text-xs font-bold uppercase tracking-wider mb-1">
             <Sparkles className="w-4 h-4" />
-            <span>{currentMode === "simple" ? "APRIMORAMENTO PROFISSIONAL FAST — MODO SIMPLES" : "APRIMORAMENTO PROFISSIONAL FAST — MODO COMPLETO"}</span>
+            <span>ESPECIALISTA FAST — ESTRUTURAÇÃO INTELIGENTE</span>
           </div>
-          <h4 className="font-extrabold text-base">Revisar e Profissionalizar Toda a Redação</h4>
+          <h4 className="font-extrabold text-base">
+            Revisar e Profissionalizar Toda a Redação
+          </h4>
           <p className="text-xs text-blue-100 max-w-xl mt-1 leading-relaxed">
-            {currentMode === "simple"
-              ? "No Modo Simples, o Fast estrutura frases curtas, objetivas e de leitura rápida, preservando 100% dos seus dados reais sem textos inflados."
-              : "No Modo Completo, o Fast estrutura detalhadamente suas atividades, responsabilidades e realizações com alta densidade profissional."}
+            O Fast ajusta e profissionaliza sua redação automaticamente para o formato ideal de recrutamento, destacando suas conquistas e preservando 100% dos seus dados reais.
           </p>
         </div>
 
@@ -379,6 +284,8 @@ export function Step6Review({
           )}
         </button>
       </div>
+
+
 
       {/* 5. Ação de Checkout Pix e Download */}
       <div className="p-6 bg-emerald-50/70 border border-emerald-300 rounded-2xl text-center space-y-4">

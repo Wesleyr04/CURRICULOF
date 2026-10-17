@@ -40,18 +40,12 @@ export function Step4Education({ education, mode = "simple", onChange, onNext, o
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-slate-900">Etapa 4 — Formação Acadêmica</h2>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 uppercase">
-              Modo {mode === "simple" ? "Simples" : "Completo"}
-            </span>
-          </div>
+          <h2 className="text-xl font-bold text-slate-900">Etapa 4 — Formação Acadêmica</h2>
           <p className="text-xs text-slate-500 mt-1">
-            {mode === "simple"
-              ? "Informe sua maior escolaridade ou formação em andamento de maneira objetiva."
-              : "Informe seu histórico educacional: escolaridade, graduações, cursos técnicos ou pós-graduações."}
+            Informe sua escolaridade, graduação ou curso técnico em andamento. O FastCurrículo formata sua formação com padrão acadêmico e profissional.
           </p>
         </div>
+
 
         <button
           type="button"

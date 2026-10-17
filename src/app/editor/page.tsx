@@ -139,34 +139,13 @@ function EditorContent() {
 
           <span className="text-slate-300 hidden md:inline">|</span>
 
-          {/* Alternância Rápida de Modo no Topo */}
-          <div className="hidden md:flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-            <button
-              type="button"
-              onClick={() => setCreationMode("simple")}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1 ${
-                resumeData.creationMode === "simple"
-                  ? "bg-white text-blue-900 shadow-2xs font-bold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Zap className="w-3 h-3 text-emerald-600" />
-              <span>Modo Simples</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCreationMode("complete")}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1 ${
-                resumeData.creationMode === "complete"
-                  ? "bg-white text-blue-900 shadow-2xs font-bold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Layers className="w-3 h-3 text-blue-600" />
-              <span>Modo Completo</span>
-            </button>
+          {/* Badge de Auto-Adaptação Inteligente */}
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700">
+            <Sparkles className="w-3.5 h-3.5 text-blue-700" />
+            <span>Adaptação Automática Ativa</span>
           </div>
         </div>
+
 
         {/* Ações Rápidas */}
         <div className="flex items-center gap-2">
@@ -231,32 +210,14 @@ function EditorContent() {
           style={{ maxHeight: "calc(100vh - 8.5rem)" }}
         >
           {currentStep === 1 && (
-            <div className="space-y-6">
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-blue-900" />
-                    Modo de Criação do Currículo
-                  </span>
-                  <span className="text-[11px] text-slate-500">
-                    Alterne livremente sem perder dados
-                  </span>
-                </div>
-                <ModeSelector
-                  mode={resumeData.creationMode || "simple"}
-                  onSelectMode={setCreationMode}
-                  hasDetailedData={hasDetailedData}
-                />
-              </div>
-
-              <Step1Personal
-                data={resumeData.personal}
-                mode={resumeData.creationMode}
-                onChange={(personal) => setResumeData((prev) => ({ ...prev, personal }))}
-                onNext={() => setCurrentStep(2)}
-              />
-            </div>
+            <Step1Personal
+              data={resumeData.personal}
+              mode={resumeData.creationMode}
+              onChange={(personal) => setResumeData((prev) => ({ ...prev, personal }))}
+              onNext={() => setCurrentStep(2)}
+            />
           )}
+
 
           {currentStep === 2 && (
             <Step2Target
@@ -321,9 +282,9 @@ function EditorContent() {
               onOpenCheckout={() => setIsCheckoutOpen(true)}
               onNavigateToStep={(s) => setCurrentStep(s)}
               onResetData={handleResetData}
-              onChangeMode={setCreationMode}
             />
           )}
+
         </div>
 
         {/* Coluna Direita: Pré-visualização em Tempo Real em Folha A4 */}
