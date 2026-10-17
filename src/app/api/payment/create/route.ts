@@ -13,7 +13,7 @@ export async function POST(_req: NextRequest) {
     const result = await gateway.createPayment({
       orderId: order.orderId,
       amountInCents: FIXED_PRICE_IN_CENTS,
-      description: "Geração de Currículo Profissional - Currículo Fácil",
+      description: "Geração de Currículo Profissional - FastCurrículo",
     });
 
     // Atualiza com o paymentId real retornado pelo provedor

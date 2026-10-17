@@ -18,7 +18,7 @@ export function ClassicAtsLayout({ data }: LayoutProps) {
 
   return (
     <div
-      className="w-full bg-white text-slate-900 leading-relaxed font-sans"
+      className="w-full bg-white text-slate-900 leading-relaxed"
       style={{
         fontSize: customization.fontSize === "sm" ? "13px" : customization.fontSize === "lg" ? "16px" : "14px",
       }}

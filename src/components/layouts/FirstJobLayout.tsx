@@ -18,7 +18,7 @@ export function FirstJobLayout({ data }: LayoutProps) {
 
   return (
     <div
-      className="w-full bg-white text-slate-800 leading-relaxed font-sans"
+      className="w-full bg-white text-slate-800 leading-relaxed"
       style={{
         fontSize: customization.fontSize === "sm" ? "13px" : customization.fontSize === "lg" ? "16px" : "14px",
       }}

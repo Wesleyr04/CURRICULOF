@@ -89,7 +89,7 @@ export function Step6Review({
       const result = await res.json();
       if (result.resume) {
         onApplyAiImprovement(result.resume);
-        setAiSuccessMessage("Redação aprimorada com sucesso pela IA sem alteração de dados fatuais!");
+        setAiSuccessMessage("Redação aprimorada com sucesso pelo Fast, preservando 100% dos seus dados reais!");
         setTimeout(() => setAiSuccessMessage(null), 6000);
       }
     } catch {
@@ -350,13 +350,13 @@ export function Step6Review({
         <div>
           <div className="flex items-center gap-1.5 text-blue-300 text-xs font-bold uppercase tracking-wider mb-1">
             <Sparkles className="w-4 h-4" />
-            <span>Assistente de IA Especialista — {currentMode === "simple" ? "Modo Simples" : "Modo Completo"}</span>
+            <span>{currentMode === "simple" ? "APRIMORAMENTO PROFISSIONAL FAST — MODO SIMPLES" : "APRIMORAMENTO PROFISSIONAL FAST — MODO COMPLETO"}</span>
           </div>
           <h4 className="font-extrabold text-base">Revisar e Profissionalizar Toda a Redação</h4>
           <p className="text-xs text-blue-100 max-w-xl mt-1 leading-relaxed">
             {currentMode === "simple"
-              ? "No Modo Simples, a IA gera frases curtas, objetivas e de leitura rápida, preservando 100% dos seus dados reais sem textos inflados."
-              : "No Modo Completo, a IA estrutura detalhadamente suas atividades, responsabilidades e realizações com alta densidade profissional."}
+              ? "No Modo Simples, o Fast estrutura frases curtas, objetivas e de leitura rápida, preservando 100% dos seus dados reais sem textos inflados."
+              : "No Modo Completo, o Fast estrutura detalhadamente suas atividades, responsabilidades e realizações com alta densidade profissional."}
           </p>
         </div>
 
@@ -369,12 +369,12 @@ export function Step6Review({
           {loadingAi ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin text-blue-900" />
-              <span>Aprimorando texto...</span>
+              <span>Aprimorando com o Fast...</span>
             </>
           ) : (
             <>
               <Sparkles className="w-4 h-4 text-blue-900" />
-              <span>Aprimorar com IA</span>
+              <span>Aprimore com o Fast</span>
             </>
           )}
         </button>

@@ -52,7 +52,7 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
 
   const handleImproveWithAi = async (exp: ExperienceItem) => {
     if (!exp.description.trim()) {
-      alert("Escreva ao menos algumas palavras sobre suas atividades para a IA aprimorar.");
+      alert("Escreva ao menos algumas palavras sobre suas atividades para o Fast aprimorar.");
       return;
     }
 
@@ -70,7 +70,7 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
         }),
       });
 
-      if (!res.ok) throw new Error("Erro na melhoria de texto com IA");
+      if (!res.ok) throw new Error("Erro no aprimoramento de texto");
 
       const result = await res.json();
       if (result.improvedText) {
@@ -158,6 +158,7 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
                   <button
                     type="button"
                     onClick={() => removeExperience(exp.id)}
+                    aria-label={`Remover experiência #${index + 1}`}
                     className="text-xs text-rose-600 hover:text-rose-800 flex items-center gap-1 p-1 hover:bg-rose-50 rounded transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -246,12 +247,12 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
                       {loadingAiId === exp.id ? (
                         <>
                           <Loader2 className="w-3 h-3 animate-spin text-blue-700" />
-                          <span>Reescrevendo...</span>
+                          <span>Aprimorando com o Fast...</span>
                         </>
                       ) : (
                         <>
                           <Sparkles className="w-3 h-3 text-blue-700" />
-                          <span>{mode === "simple" ? "Tornar direto com IA" : "Melhorar com IA"}</span>
+                          <span>Aprimore com o Fast</span>
                         </>
                       )}
                     </button>

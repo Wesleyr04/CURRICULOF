@@ -16,15 +16,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: `${SITE_CONFIG.name} | Criador de Currículos com IA — R$ 0,50 por currículo`,
+  title: `${SITE_CONFIG.name} | Criador Rápido de Currículos Profissionais — R$ 0,50 por currículo`,
   description: SITE_CONFIG.description,
   keywords: [
-    "currículo com IA",
+    "fastcurrículo",
+    "currículo rápido",
     "fazer currículo online",
     "gerador de currículo pdf",
     "currículo ats",
     "currículo primeiro emprego",
-    "currículo profissional barato",
+    "currículo profissional",
   ],
   authors: [{ name: SITE_CONFIG.name }],
   robots: "index, follow",

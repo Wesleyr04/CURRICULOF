@@ -11,7 +11,7 @@ export class MockPixGateway implements IPaymentGateway {
     this.mockStatuses.set(paymentId, "pending");
 
     // Código Pix Copia-e-Cola fictício porém no formato EMV padrão
-    const dummyPix = `00020126580014br.gov.bcb.pix0136curriculofacil-demo-pix-chave-aleatoria52040000530398654040.505802BR5915CURRICULO FACIL6009SAO PAULO62140510${params.orderId}6304ABCD`;
+    const dummyPix = `00020126580014br.gov.bcb.pix0136fastcurriculo-demo-pix-chave-aleatoria52040000530398654040.505802BR5913FASTCURRICULO6009SAO PAULO62140510${params.orderId}6304ABCD`;
 
     return {
       paymentId,

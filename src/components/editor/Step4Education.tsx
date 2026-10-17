@@ -1,17 +1,18 @@
 "use client";
 
 import React from "react";
-import { EducationItem, EducationStatus } from "@/types/resume";
+import { EducationItem, EducationStatus, CreationMode } from "@/types/resume";
 import { Plus, Trash2, ArrowLeft, ArrowRight, GraduationCap } from "lucide-react";
 
 interface Step4Props {
   education: EducationItem[];
+  mode?: CreationMode;
   onChange: (education: EducationItem[]) => void;
   onNext: () => void;
   onPrev: () => void;
 }
 
-export function Step4Education({ education, onChange, onNext, onPrev }: Step4Props) {
+export function Step4Education({ education, mode = "simple", onChange, onNext, onPrev }: Step4Props) {
   const addEducation = () => {
     const newEdu: EducationItem = {
       id: `edu-${Date.now()}`,
@@ -39,15 +40,23 @@ export function Step4Education({ education, onChange, onNext, onPrev }: Step4Pro
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Etapa 4 — Formação Acadêmica</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-900">Etapa 4 — Formação Acadêmica</h2>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 uppercase">
+              Modo {mode === "simple" ? "Simples" : "Completo"}
+            </span>
+          </div>
           <p className="text-xs text-slate-500 mt-1">
-            Informe sua escolaridade, graduações, cursos técnicos ou pós-graduações.
+            {mode === "simple"
+              ? "Informe sua maior escolaridade ou formação em andamento de maneira objetiva."
+              : "Informe seu histórico educacional: escolaridade, graduações, cursos técnicos ou pós-graduações."}
           </p>
         </div>
 
         <button
           type="button"
           onClick={addEducation}
+          aria-label="Adicionar formação acadêmica"
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-900 hover:bg-blue-800 rounded-lg shadow-2xs transition-colors shrink-0"
         >
           <Plus className="w-4 h-4" />
@@ -85,6 +94,7 @@ export function Step4Education({ education, onChange, onNext, onPrev }: Step4Pro
                 <button
                   type="button"
                   onClick={() => removeEducation(edu.id)}
+                  aria-label={`Remover formação #${idx + 1}`}
                   className="text-xs text-rose-600 hover:text-rose-800 flex items-center gap-1 p-1 hover:bg-rose-50 rounded transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

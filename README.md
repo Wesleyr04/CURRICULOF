@@ -1,13 +1,13 @@
-# Currículo Fácil — Criador de Currículos com IA (MVP Web)
+# FastCurrículo — Criador Rápido de Currículos Profissionais
 
-> **Proposta de Valor:** "Você informa seus dados. A IA organiza suas experiências. Você recebe um currículo profissional pronto para enviar."
+> **Proposta de Valor:** "Você informa seus dados. O Fast organiza suas experiências. Você recebe um currículo profissional pronto para enviar."
 > **Preço Unitário:** R$ 0,50 por currículo via Pix • **Sem cadastro** • **Zero armazenamento permanente de currículos**.
 
 ---
 
 ## 1. Visão Geral da Arquitetura
 
-O **Currículo Fácil** é uma plataforma web construída com foco em simplicidade, velocidade, segurança e proteção de dados pessoais (LGPD).
+O **FastCurrículo** é uma plataforma web construída com foco em simplicidade, velocidade, segurança e proteção de dados pessoais (LGPD).
 
 ### Destaques Arquiteturais:
 - **Zero Persistência de Currículos:** Não há banco de dados de currículos, nem cadastro de usuários. As informações permanecem estritamente na memória volátil do navegador do usuário durante a sessão.

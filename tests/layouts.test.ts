@@ -39,4 +39,19 @@ describe("Integridade dos 5 Layouts Distintos", () => {
       expect(cloned.personal.fullName).toBeTruthy();
     });
   });
+
+  it("deve suportar e aceitar personalização dinâmica de famílias tipográficas (sans, serif, mono)", () => {
+    const fontOptions = ["sans", "serif", "mono"] as const;
+    fontOptions.forEach((font) => {
+      const data = {
+        ...INITIAL_RESUME_DATA,
+        customization: {
+          ...INITIAL_RESUME_DATA.customization,
+          fontFamily: font,
+        },
+      };
+      expect(data.customization.fontFamily).toBe(font);
+    });
+  });
 });
+

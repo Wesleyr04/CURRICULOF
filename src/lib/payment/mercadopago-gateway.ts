@@ -32,7 +32,7 @@ export class MercadoPagoGateway implements IPaymentGateway {
         description: params.description,
         payment_method_id: "pix",
         payer: {
-          email: "anonimo@curriculofacil.com.br", // sem persistir e sem vincular dado sensível do usuário
+          email: "anonimo@fastcurriculo.com.br", // sem persistir e sem vincular dado sensível do usuário
         },
         external_reference: params.orderId,
       }),

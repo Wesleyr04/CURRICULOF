@@ -63,4 +63,41 @@ describe("Segurança Financeira e Camada de Pagamentos (R$ 0,50)", () => {
       process.env.ALLOW_MOCK_PAYMENT = oldAllow;
     }
   });
+
+  it("deve isolar a geração do comprovante em PDF com dados auditáveis e independentes", async () => {
+    const { downloadReceiptPdf } = await import("@/lib/pdf/generate-pdf");
+    expect(typeof downloadReceiptPdf).toBe("function");
+
+    // Testa geração isolada do comprovante
+    const success = await downloadReceiptPdf({
+      orderId: "ord_test_isolation_123",
+      paymentId: "pay_test_456",
+      formattedAmount: "R$ 0,50",
+      paidAt: Date.now(),
+      downloadToken: "dl_token_valido_xyz",
+    });
+
+    expect(success).toBe(true);
+
+    const fs = await import("fs");
+    const path = await import("path");
+    const testPdfPath = path.join(process.cwd(), "comprovante-pix-ord_test_isolation_123.pdf");
+    if (fs.existsSync(testPdfPath)) {
+      fs.unlinkSync(testPdfPath);
+    }
+  });
+
+  it("downloadResumePdf deve retornar false de forma segura caso o elemento não exista no DOM", async () => {
+    const { downloadResumePdf } = await import("@/lib/pdf/generate-pdf");
+    expect(typeof downloadResumePdf).toBe("function");
+
+    // Elemento inexistente no ambiente de teste não deve disparar erro nem travar
+    const result = await downloadResumePdf({
+      fileName: "teste.pdf",
+      elementId: "elemento-inexistente-xyz",
+    });
+
+    expect(result).toBe(false);
+  });
 });
+

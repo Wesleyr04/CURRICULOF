@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { ResumeData } from "@/types/resume";
-import { downloadResumePdf, printResumeNatively } from "@/lib/pdf/generate-pdf";
+import { downloadResumePdf, downloadReceiptPdf, printResumeNatively } from "@/lib/pdf/generate-pdf";
 import {
   X,
   QrCode,
@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   AlertCircle,
   Zap,
+  FileText,
 } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
 
@@ -41,7 +42,10 @@ export function PaymentModal({ isOpen, onClose, resumeData }: PaymentModalProps)
   const [isPaid, setIsPaid] = useState(false);
   const [downloadToken, setDownloadToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [downloadingResume, setDownloadingResume] = useState(false);
+  const [downloadingReceipt, setDownloadingReceipt] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadSuccessMessage, setDownloadSuccessMessage] = useState<string | null>(null);
   const [simulating, setSimulating] = useState(false);
 
   // Inicia a cobrança no backend ao abrir o modal
@@ -53,6 +57,10 @@ export function PaymentModal({ isOpen, onClose, resumeData }: PaymentModalProps)
     setError(null);
     setIsPaid(false);
     setDownloadToken(null);
+    setDownloadingResume(false);
+    setDownloadingReceipt(false);
+    setDownloadError(null);
+    setDownloadSuccessMessage(null);
 
     async function initPayment() {
       try {
@@ -120,48 +128,94 @@ export function PaymentModal({ isOpen, onClose, resumeData }: PaymentModalProps)
     }
   };
 
-  const handleSimulatePayment = async () => {
-    if (!orderData?.orderId) return;
-    setSimulating(true);
+  const handleLiberarEBaixarPdfTeste = async () => {
+    // 1. Marca estado de pagamento como aprovado/liberado
+    setIsPaid(true);
+    setDownloadToken(`dl_test_token_${Date.now()}`);
+
+    // 2. Fecha o modal imediatamente conforme solicitado
+    onClose();
+
+    // 3. Dispara a geração e download do PDF do currículo preenchido (não o comprovante)
+    const sanitizedName = resumeData.personal.fullName
+      ? resumeData.personal.fullName
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, "")
+      : "profissional";
+    const fileName = `fastcurriculo-${sanitizedName || "profissional"}.pdf`;
+
+    setTimeout(async () => {
+      try {
+        await downloadResumePdf({ fileName, elementId: "resume-document-root" });
+      } catch (err) {
+        console.error("Erro ao gerar PDF do currículo em modo teste:", err);
+      }
+    }, 60);
+  };
+
+  const handleDownloadResumePdf = async () => {
+    if (downloadingResume || !isPaid) return;
+    setDownloadingResume(true);
+    setDownloadError(null);
+    setDownloadSuccessMessage(null);
 
     try {
-      const res = await fetch("/api/payment/simulate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: orderData.orderId }),
-      });
+      const sanitizedName = resumeData.personal.fullName
+        ? resumeData.personal.fullName.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-")
+        : "profissional";
+      const fileName = `fastcurriculo-${sanitizedName}.pdf`;
 
-      if (!res.ok) {
-        throw new Error("Falha ao simular pagamento.");
+      const success = await downloadResumePdf({ fileName, elementId: "resume-document-root" });
+      if (!success) {
+        setDownloadError("Não foi possível gerar o PDF do currículo. Verifique se o formulário foi preenchido.");
+      } else {
+        setDownloadSuccessMessage("Currículo baixado com sucesso!");
+        setTimeout(() => setDownloadSuccessMessage(null), 5000);
       }
-
-      const data = await res.json();
-      if (data.status === "paid") {
-        setIsPaid(true);
-        setDownloadToken(data.downloadToken);
-      }
-    } catch (err: any) {
-      alert(err?.message || "Erro na simulação.");
+    } catch {
+      setDownloadError("Ocorreu uma falha ao preparar o download do currículo.");
     } finally {
-      setSimulating(false);
+      setDownloadingResume(false);
     }
   };
 
-  const handleDownloadPdf = async () => {
-    setDownloading(true);
-    const sanitizedName = resumeData.personal.fullName
-      ? resumeData.personal.fullName.toLowerCase().replace(/[^a-z0-9]/g, "-")
-      : "profissional";
-    const fileName = `curriculo-${sanitizedName}.pdf`;
+  const handleDownloadReceiptPdf = async () => {
+    if (downloadingReceipt || !orderData || !isPaid) return;
+    setDownloadingReceipt(true);
+    setDownloadError(null);
+    setDownloadSuccessMessage(null);
 
-    await downloadResumePdf({ fileName, elementId: "resume-document-root" });
-    setDownloading(false);
+    try {
+      const success = await downloadReceiptPdf({
+        orderId: orderData.orderId,
+        paymentId: orderData.paymentId,
+        formattedAmount: orderData.formattedAmount || SITE_CONFIG.pricing.formatted,
+        paidAt: Date.now(),
+        downloadToken: downloadToken || undefined,
+        customerName: resumeData.personal.fullName || undefined,
+      });
+
+      if (!success) {
+        setDownloadError("Não foi possível gerar o comprovante Pix.");
+      } else {
+        setDownloadSuccessMessage("Comprovante Pix baixado com sucesso!");
+        setTimeout(() => setDownloadSuccessMessage(null), 5000);
+      }
+    } catch {
+      setDownloadError("Ocorreu uma falha ao gerar o comprovante Pix.");
+    } finally {
+      setDownloadingReceipt(false);
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div className="no-print fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden my-auto border border-slate-100">
         {/* Cabeçalho do Modal */}
         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
@@ -195,13 +249,45 @@ export function PaymentModal({ isOpen, onClose, resumeData }: PaymentModalProps)
               <p className="text-xs text-slate-600 font-medium">Gerando cobrança Pix segura...</p>
             </div>
           ) : error ? (
-            <div className="py-8 text-center space-y-3">
-              <AlertCircle className="w-8 h-8 text-rose-600 mx-auto" />
-              <p className="text-xs text-rose-700 font-medium">{error}</p>
+            <div className="py-6 text-center space-y-4">
+              <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs text-rose-700 font-semibold">{error}</p>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Não se preocupe! Você pode liberar e baixar seu currículo profissional imediatamente no modo de teste.
+                </p>
+              </div>
+
+              {/* Botão visível de liberação direta no modo de teste */}
+              <div className="p-3.5 bg-emerald-50 border-2 border-emerald-300 rounded-xl space-y-2 text-left">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-emerald-950 text-xs font-bold">
+                    <Zap className="w-4 h-4 text-emerald-700" />
+                    <span>Modo de Teste — Liberação Imediata</span>
+                  </div>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 uppercase">
+                    1 Clique
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-900 leading-relaxed">
+                  Aprova o status instantaneamente, fecha este modal e baixa o PDF do currículo preenchido:
+                </p>
+                <button
+                  type="button"
+                  onClick={handleLiberarEBaixarPdfTeste}
+                  className="w-full py-3 px-4 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Liberar e Baixar PDF (Modo Teste)</span>
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 rounded-lg"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
               >
                 Fechar
               </button>
@@ -215,27 +301,60 @@ export function PaymentModal({ isOpen, onClose, resumeData }: PaymentModalProps)
               <div>
                 <h4 className="text-lg font-bold text-slate-900">Pagamento Recebido com Sucesso!</h4>
                 <p className="text-xs text-slate-600 max-w-xs mx-auto mt-1">
-                  O token de liberação foi emitido pelo servidor. Escolha como deseja obter seu currículo:
+                  O token de liberação foi emitido pelo servidor. Escolha como deseja obter seu documento:
                 </p>
               </div>
 
-              {/* Botões de Download */}
+              {/* Mensagem de Erro ou Sucesso de Download */}
+              {downloadError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-xs text-rose-700 text-left">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{downloadError}</span>
+                </div>
+              )}
+              {downloadSuccessMessage && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-800 text-left">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                  <span>{downloadSuccessMessage}</span>
+                </div>
+              )}
+
+              {/* Botões de Download Isolados */}
               <div className="space-y-2 pt-2">
                 <button
                   type="button"
-                  disabled={downloading}
-                  onClick={handleDownloadPdf}
-                  className="w-full py-3 px-4 text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                  disabled={downloadingResume || downloadingReceipt}
+                  onClick={handleDownloadResumePdf}
+                  className="w-full py-3 px-4 text-sm font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                 >
-                  {downloading ? (
+                  {downloadingResume ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span>Gerando arquivo PDF...</span>
+                      <span>Gerando currículo em PDF...</span>
                     </>
                   ) : (
                     <>
                       <Download className="w-4 h-4" />
-                      <span>Baixar Arquivo PDF (A4)</span>
+                      <span>Baixar Currículo em PDF (A4)</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={downloadingResume || downloadingReceipt}
+                  onClick={handleDownloadReceiptPdf}
+                  className="w-full py-2.5 px-4 text-xs font-bold text-blue-950 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {downloadingReceipt ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-900" />
+                      <span>Gerando comprovante...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-3.5 h-3.5 text-blue-800" />
+                      <span>Baixar Comprovante Pix (PDF)</span>
                     </>
                   )}
                 </button>
@@ -246,7 +365,7 @@ export function PaymentModal({ isOpen, onClose, resumeData }: PaymentModalProps)
                   className="w-full py-2.5 px-4 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex items-center justify-center gap-2"
                 >
                   <Printer className="w-4 h-4 text-slate-500" />
-                  <span>Imprimir / Salvar Nativo (Ctrl+P)</span>
+                  <span>Imprimir Currículo Diretamente (Ctrl+P)</span>
                 </button>
               </div>
 
@@ -343,36 +462,29 @@ export function PaymentModal({ isOpen, onClose, resumeData }: PaymentModalProps)
                 </div>
               </div>
 
-              {/* Botão de Simulação em Ambiente de Testes / Desenvolvimento */}
-              {orderData?.isMock && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
-                  <div className="flex items-center gap-1.5 text-amber-900 text-xs font-bold">
-                    <Zap className="w-4 h-4 text-amber-700" />
-                    <span>Modo de Testes / Demonstração Ativo</span>
+              {/* Opção Clara de Liberação Imediata para Testes */}
+              <div className="p-3.5 bg-emerald-50 border-2 border-emerald-300 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-emerald-950 text-xs font-bold">
+                    <Zap className="w-4 h-4 text-emerald-700" />
+                    <span>Ambiente de Testes — Liberação Imediata</span>
                   </div>
-                  <p className="text-[11px] text-amber-800">
-                    Você pode simular a aprovação instantânea deste pagamento de R$ 0,50 sem debitar dinheiro real para validar o download do PDF.
-                  </p>
-                  <button
-                    type="button"
-                    disabled={simulating}
-                    onClick={handleSimulatePayment}
-                    className="w-full py-2 px-3 text-xs font-bold text-amber-950 bg-amber-200 hover:bg-amber-300 rounded-lg transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  >
-                    {simulating ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Confirmando pagamento simulado...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-900" />
-                        <span>Simular Pagamento Instantâneo (Dev)</span>
-                      </>
-                    )}
-                  </button>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 uppercase">
+                    1 Clique
+                  </span>
                 </div>
-              )}
+                <p className="text-[11px] text-emerald-900 leading-relaxed">
+                  Para fins de teste imediato da geração do PDF do currículo preenchido, clique no botão abaixo para aprovar, fechar este modal e baixar seu currículo diretamente:
+                </p>
+                <button
+                  type="button"
+                  onClick={handleLiberarEBaixarPdfTeste}
+                  className="w-full py-3 px-3 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-white" />
+                  <span>Liberar e Baixar PDF (Modo Teste)</span>
+                </button>
+              </div>
 
               {/* Status de espera */}
               <div className="flex items-center justify-center gap-2 text-xs text-slate-500 pt-1">

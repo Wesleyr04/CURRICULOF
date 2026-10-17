@@ -25,7 +25,7 @@ export function Step2Target({ data, fullData, mode = "simple", onChange, onNext,
 
   const handleRequestAiSuggestion = async () => {
     if (!data.jobTitle.trim() || !data.field.trim()) {
-      alert("Por favor, preencha o Cargo Desejado e a Área Profissional antes de solicitar a sugestão da IA.");
+      alert("Por favor, preencha o Cargo Desejado e a Área Profissional antes de solicitar a sugestão do Fast.");
       return;
     }
 
@@ -54,7 +54,7 @@ export function Step2Target({ data, fullData, mode = "simple", onChange, onNext,
       });
 
       if (!res.ok) {
-        throw new Error("Falha ao comunicar com o assistente de IA.");
+        throw new Error("Falha ao comunicar com o serviço Fast.");
       }
 
       const result = await res.json();
@@ -62,7 +62,7 @@ export function Step2Target({ data, fullData, mode = "simple", onChange, onNext,
         updateField("summary", result.summary);
       }
     } catch (err: any) {
-      setAiError(err?.message || "Não foi possível gerar a sugestão no momento.");
+      setAiError(err?.message || "Não foi possível gerar a sugestão do Fast no momento.");
     } finally {
       setLoadingAi(false);
     }
@@ -136,7 +136,7 @@ export function Step2Target({ data, fullData, mode = "simple", onChange, onNext,
               <span className="text-slate-400 font-normal">(Recomendado)</span>
             )}
           </label>
-          {/* Botão de Sugestão de IA */}
+          {/* Botão de Sugestão Fast */}
           <button
             type="button"
             disabled={loadingAi}
@@ -146,12 +146,12 @@ export function Step2Target({ data, fullData, mode = "simple", onChange, onNext,
             {loadingAi ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-700" />
-                <span>Gerando síntese objetiva...</span>
+                <span>Fast gerando síntese objetiva...</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-3.5 h-3.5 text-blue-700" />
-                <span>{activeMode === "simple" ? "Gerar frase enxuta com IA" : "Pedir sugestão para a IA"}</span>
+                <span>Sugestão do Fast</span>
               </>
             )}
           </button>
@@ -163,8 +163,8 @@ export function Step2Target({ data, fullData, mode = "simple", onChange, onNext,
           onChange={(e) => updateField("summary", e.target.value)}
           placeholder={
             activeMode === "simple"
-              ? "Ex: Profissional focado em suporte técnico com vivência em atendimento e sustentação de sistemas. (Ou deixe em branco para currículo direto)"
-              : "Escreva brevemente seu perfil ou clique em 'Pedir sugestão para a IA' para estruturar uma apresentação profissional sem inventar fatos..."
+              ? "Ex: Profissional focado em suporte técnico com vivência em atendimento e sustentação de sistemas. (Ou use 'Sugestão do Fast' para resumo direto)"
+              : "Escreva brevemente seu perfil ou clique em 'Sugestão do Fast' para estruturar uma apresentação focada sem inventar fatos..."
           }
           className="w-full p-3 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 text-slate-900 leading-relaxed"
         />
@@ -179,8 +179,8 @@ export function Step2Target({ data, fullData, mode = "simple", onChange, onNext,
           <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0" />
           <span>
             {activeMode === "simple"
-              ? "Modo Simples ativo: a IA produz sínteses curtas e diretas, sem adjetivos vazios."
-              : "Modo Completo ativo: a IA estrutura uma apresentação detalhada baseada exclusivamente nas suas informações."}
+              ? "Modo Simples ativo: o Fast produz sínteses curtas e diretas, sem adjetivos vazios."
+              : "Modo Completo ativo: apresentação estruturada detalhadamente com base nas suas informações."}
           </span>
         </div>
       </div>

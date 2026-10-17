@@ -178,6 +178,7 @@ export function Step5Skills({
               <button
                 type="button"
                 onClick={() => removeTech(tech)}
+                aria-label={`Remover competência técnica ${tech}`}
                 className="hover:text-rose-600 transition-colors"
               >
                 <X className="w-3 h-3" />
@@ -223,6 +224,7 @@ export function Step5Skills({
               <button
                 type="button"
                 onClick={() => removeSoft(soft)}
+                aria-label={`Remover competência interpessoal ${soft}`}
                 className="hover:text-rose-600 transition-colors"
               >
                 <X className="w-3 h-3" />
@@ -287,6 +289,7 @@ export function Step5Skills({
               <button
                 type="button"
                 onClick={() => removeCourse(course.id)}
+                aria-label={`Remover curso ${course.name || ""}`}
                 className="p-1.5 text-rose-600 hover:bg-rose-50 rounded"
               >
                 <Trash2 className="w-4 h-4" />
@@ -356,6 +359,7 @@ export function Step5Skills({
                   <button
                     type="button"
                     onClick={() => removeCert(cert)}
+                    aria-label={`Remover certificação ${cert}`}
                     className="text-slate-400 hover:text-rose-600 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -439,6 +443,7 @@ export function Step5Skills({
                 <button
                   type="button"
                   onClick={() => removeLanguage(lang.id)}
+                  aria-label={`Remover idioma ${lang.name || ""}`}
                   className="p-1.5 text-rose-600 hover:bg-rose-50 rounded"
                 >
                   <Trash2 className="w-4 h-4" />

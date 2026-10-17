@@ -1,5 +1,5 @@
 export const SITE_CONFIG = {
-  name: "Currículo Fácil",
+  name: "FastCurrículo",
   tagline: "Seu próximo currículo começa aqui.",
   description: "Organize suas informações, escolha um modelo e tenha seu currículo pronto para baixar. Sem cadastro e sem armazenar seus dados pessoais.",
   pricing: {
@@ -8,8 +8,8 @@ export const SITE_CONFIG = {
     period: "pagamento único",
     description: "por currículo gerado",
   },
-  contactEmail: "contato@curriculofacil.com.br",
-  version: "1.1.0",
+  contactEmail: "contato@fastcurriculo.com.br",
+  version: "1.2.0",
   privacy: {
     zeroPersistence: true,
     policyLastUpdated: "16 de Outubro de 2026",
@@ -73,8 +73,8 @@ export const SITE_CONFIG = {
       answer: "Não! Adotamos uma política estrita de privacidade e zero persistência. Os dados do seu currículo ficam temporariamente apenas na memória do seu navegador e não são armazenados em nenhum banco de dados.",
     },
     {
-      question: "A IA inventa experiências ou empresas?",
-      answer: "De forma alguma. Nossa IA foi configurada com restrições rígidas para apenas corrigir erros ortográficos, melhorar a clareza e transformar suas atividades reais em uma linguagem profissional, sem criar informações falsas.",
+      question: "O Fast inventa experiências ou empresas?",
+      answer: "De forma alguma. Nosso serviço Fast foi configurado com restrições rígidas para apenas corrigir erros ortográficos, melhorar a clareza e transformar suas atividades reais em uma linguagem profissional, sem criar informações falsas.",
     },
     {
       question: "Os modelos são compatíveis com sistemas ATS (robôs de RH)?",

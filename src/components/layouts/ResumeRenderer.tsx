@@ -24,6 +24,12 @@ export function ResumeRenderer({ data, isPdfView = false }: ResumeRendererProps)
       ? "font-mono"
       : "font-sans";
 
+  const fontStyleMap: Record<string, string> = {
+    sans: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    serif: 'Georgia, Cambria, "Times New Roman", Times, ui-serif, serif',
+    mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  };
+
   const renderSelectedLayout = () => {
     switch (layoutId) {
       case "classic-ats":
@@ -50,6 +56,7 @@ export function ResumeRenderer({ data, isPdfView = false }: ResumeRendererProps)
         maxWidth: "210mm",
         minHeight: isPdfView ? "297mm" : "auto",
         boxSizing: "border-box",
+        fontFamily: fontStyleMap[fontFamily] || fontStyleMap.sans,
       }}
     >
       {renderSelectedLayout()}

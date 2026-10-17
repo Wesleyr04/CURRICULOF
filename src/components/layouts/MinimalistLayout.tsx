@@ -16,7 +16,7 @@ export function MinimalistLayout({ data }: LayoutProps) {
 
   return (
     <div
-      className="w-full bg-white text-neutral-800 leading-relaxed font-sans p-8 md:p-12"
+      className="w-full bg-white text-neutral-800 leading-relaxed p-8 md:p-12"
       style={{
         fontSize: customization.fontSize === "sm" ? "13px" : customization.fontSize === "lg" ? "16px" : "14px",
       }}

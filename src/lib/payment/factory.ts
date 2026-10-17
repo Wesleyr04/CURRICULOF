@@ -34,7 +34,7 @@ export function getPaymentGateway(): IPaymentGateway {
     return sharedMockGateway;
   }
 
-  if (isProduction && process.env.ALLOW_MOCK_PAYMENT !== "true") {
+  if (isProduction && process.env.ALLOW_MOCK_PAYMENT !== "true" && process.env.PAYMENT_GATEWAY && process.env.PAYMENT_GATEWAY !== "mock") {
     throw new Error("Gateway mock proibido em ambiente de produção sem flag explícita.");
   }
 

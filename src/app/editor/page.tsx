@@ -222,10 +222,10 @@ function EditorContent() {
       </div>
 
       {/* Corpo Dividido: Formulário na Esquerda | Prévia na Direita */}
-      <div className="flex-1 max-w-[1600px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden">
+      <div className="flex-1 max-w-[1600px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden print:block print:max-w-none print:overflow-visible">
         {/* Coluna Esquerda: Formulário de Edição */}
         <div
-          className={`lg:col-span-6 xl:col-span-5 bg-white border-r border-slate-200 p-4 sm:p-8 overflow-y-auto ${
+          className={`no-print lg:col-span-6 xl:col-span-5 bg-white border-r border-slate-200 p-4 sm:p-8 overflow-y-auto ${
             mobileTab === "preview" ? "hidden lg:block" : "block"
           }`}
           style={{ maxHeight: "calc(100vh - 8.5rem)" }}
@@ -283,6 +283,7 @@ function EditorContent() {
           {currentStep === 4 && (
             <Step4Education
               education={resumeData.education}
+              mode={resumeData.creationMode}
               onChange={(education) => setResumeData((prev) => ({ ...prev, education }))}
               onNext={() => setCurrentStep(5)}
               onPrev={() => setCurrentStep(3)}
@@ -327,7 +328,7 @@ function EditorContent() {
 
         {/* Coluna Direita: Pré-visualização em Tempo Real em Folha A4 */}
         <div
-          className={`lg:col-span-6 xl:col-span-7 bg-slate-200/70 p-4 sm:p-8 overflow-y-auto flex flex-col items-center ${
+          className={`print:flex print:w-full print:p-0 print:m-0 print:max-h-none print:overflow-visible print:bg-white lg:col-span-6 xl:col-span-7 bg-slate-200/70 p-4 sm:p-8 overflow-y-auto flex flex-col items-center ${
             mobileTab === "form" ? "hidden lg:flex" : "flex"
           }`}
           style={{ maxHeight: "calc(100vh - 8.5rem)" }}

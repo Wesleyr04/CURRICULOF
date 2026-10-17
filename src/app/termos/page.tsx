@@ -39,7 +39,7 @@ export default function TermosPage() {
           <section>
             <h2 className="text-base font-bold text-slate-900 mb-1.5">1. Objeto do Serviço</h2>
             <p>
-              O <strong>{SITE_CONFIG.name}</strong> disponibiliza uma ferramenta online para estruturação, diagramação visual em layouts pré-definidos e auxílio redacional via inteligência artificial para elaboração de currículos profissionais, com exportação final em formato PDF.
+              O <strong>{SITE_CONFIG.name}</strong> disponibiliza uma ferramenta online para estruturação, diagramação visual em layouts pré-definidos e auxílio redacional com o serviço Fast para elaboração de currículos profissionais, com exportação final em formato PDF.
             </p>
           </section>
 
@@ -53,7 +53,7 @@ export default function TermosPage() {
           <section>
             <h2 className="text-base font-bold text-slate-900 mb-1.5">3. Veracidade das Informações</h2>
             <p>
-              O usuário declara e garante que todas as informações inseridas na plataforma refletem sua real trajetória acadêmica e profissional. A inteligência artificial atua estritamente como ferramenta de revisão gramatical e sintática, cabendo ao usuário a conferência integral dos dados gerados antes de seu envio a empregadores.
+              O usuário declara e garante que todas as informações inseridas na plataforma refletem sua real trajetória acadêmica e profissional. O serviço de aprimoramento Fast atua estritamente como ferramenta de revisão gramatical e sintática, cabendo ao usuário a conferência integral dos dados gerados antes de seu envio a empregadores.
             </p>
           </section>
 

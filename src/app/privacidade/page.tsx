@@ -69,12 +69,12 @@ export default function PrivacidadePage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-bold text-slate-900 mb-2">2. Processamento por Inteligência Artificial</h2>
+            <h2 className="text-lg font-bold text-slate-900 mb-2">2. Processamento do Serviço de Aprimoramento Fast</h2>
             <p>
-              Quando você clica voluntariamente no botão de aprimoramento por IA, as informações textuais do seu currículo são transmitidas de forma segura e criptografada (HTTPS) ao provedor de IA exclusivamente para correção gramatical, reestruturação de frases e adaptação de vocabulário.
+              Quando você clica voluntariamente no botão de aprimoramento do Fast, as informações textuais do seu currículo são transmitidas de forma segura e criptografada (HTTPS) ao nosso serviço de processamento exclusivamente para correção gramatical, reestruturação de frases e adaptação de vocabulário.
             </p>
             <p className="mt-2 text-xs text-slate-600">
-              O provedor é configurado com diretrizes de não-retenção para treinamento de modelos públicos e a requisição é descartada após a resposta ser entregue ao seu navegador.
+              O serviço opera sob diretrizes estritas de não-retenção e a requisição é descartada após a resposta ser entregue ao seu navegador.
             </p>
           </section>
 

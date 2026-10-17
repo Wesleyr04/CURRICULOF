@@ -21,7 +21,7 @@ export function Footer() {
               </span>
             </div>
             <p className="text-xs text-slate-600 max-w-md leading-relaxed">
-              Plataforma brasileira para criação rápida e acessível de currículos profissionais com assistência de IA.
+              Plataforma brasileira para criação rápida, acessível e profissional de currículos.
               Apenas {SITE_CONFIG.pricing.formatted} por currículo. Sem contas, sem senhas e com exclusão imediata dos dados após o uso.
             </p>
             <div className="flex items-center gap-2 text-xs text-emerald-700 font-medium">
