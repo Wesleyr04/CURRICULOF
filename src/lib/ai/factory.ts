@@ -41,10 +41,13 @@ export function getAIService(): IAIService {
   // 4. Provedor Anthropic / OpenRouter (Padrão Oficial de Alta Fidelidade)
   // Se AI_PROVIDER não for 'mock', a integração de IA em nuvem é obrigatória.
   // Suporta ANTHROPIC_API_KEY ou OPENROUTER_API_KEY.
-  const rawKey =
-    process.env.ANTHROPIC_API_KEY ||
-    process.env.OPENROUTER_API_KEY ||
-    "";
+  let sourceEnv: "ANTHROPIC_API_KEY" | "OPENROUTER_API_KEY" = "ANTHROPIC_API_KEY";
+  let rawKey = process.env.ANTHROPIC_API_KEY || "";
+  if (!rawKey.trim() && process.env.OPENROUTER_API_KEY) {
+    rawKey = process.env.OPENROUTER_API_KEY;
+    sourceEnv = "OPENROUTER_API_KEY";
+  }
+
   const apiKey = rawKey.replace(/[\r\n"']/g, "").trim();
   if (!apiKey) {
     throw new AIConfigurationError(
@@ -58,6 +61,6 @@ export function getAIService(): IAIService {
     "";
   const cleanModel = rawModel.replace(/[\r\n"']/g, "").trim();
 
-  return new AnthropicClientService(apiKey, cleanModel || undefined);
+  return new AnthropicClientService(apiKey, cleanModel || undefined, sourceEnv);
 }
 

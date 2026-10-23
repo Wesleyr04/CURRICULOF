@@ -152,14 +152,59 @@ export function handleAIRouteError(error: unknown): NextResponse {
     );
   }
 
+// Helper seguro para obter fingerprint de runtime sem vazar secrets completos
+function getRuntimeAuthDiagnostics(errObj?: Record<string, unknown> | null): Record<string, unknown> {
+  if (errObj && typeof errObj.authDiagnostics === "object" && errObj.authDiagnostics !== null) {
+    return errObj.authDiagnostics as Record<string, unknown>;
+  }
+
+  const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim());
+  const hasOpenRouter = Boolean(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY.trim());
+  const sourceEnv = hasAnthropic ? "ANTHROPIC_API_KEY" : hasOpenRouter ? "OPENROUTER_API_KEY" : "nenhuma";
+  const rawKey = (process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY || "").replace(/[\r\n"']/g, "").trim();
+
+  const isOr =
+    rawKey.startsWith("sk-or-") ||
+    (!rawKey.startsWith("sk-ant-") &&
+      (hasOpenRouter || (process.env.AI_PROVIDER || "").toLowerCase().includes("openrouter")));
+
+  return {
+    providerMode: isOr ? "OpenRouter (Claude Compatibility)" : "Anthropic Claude (Oficial)",
+    sourceEnv,
+    targetUrl: isOr ? "https://openrouter.ai/api/v1/chat/completions" : "https://api.anthropic.com/v1/messages",
+    keyPrefix: rawKey ? rawKey.slice(0, 10) : "",
+    keySuffix: rawKey ? rawKey.slice(-4) : "",
+    keyLength: rawKey.length,
+    hasAnthropicKeyEnv: hasAnthropic,
+    hasOpenRouterKeyEnv: hasOpenRouter,
+    aiProviderEnv: (process.env.AI_PROVIDER || "").replace(/[\r\n"']/g, "").trim() || "não definido",
+    model: process.env.ANTHROPIC_MODEL || process.env.OPENROUTER_MODEL || "claude-3-5-haiku-20241022",
+  };
+}
+
   // Autenticação (Chave inválida ou expirada - HTTP 401)
   if (status === 401 || error instanceof AIAuthenticationError || errorName === "AuthenticationError") {
+    const diag = getRuntimeAuthDiagnostics(errObj);
+
+    const headers: Record<string, string> = {
+      "x-ai-source-env": String(diag.sourceEnv || "unknown"),
+      "x-ai-provider-mode": String(diag.providerMode || "unknown"),
+      "x-ai-target-url": String(diag.targetUrl || "unknown"),
+      "x-ai-key-prefix": String(diag.keyPrefix || ""),
+      "x-ai-key-suffix": String(diag.keySuffix || ""),
+      "x-ai-key-length": String(diag.keyLength || 0),
+    };
+
     return NextResponse.json(
       {
         error: "Falha de autenticação com o provedor de IA. Credenciais inválidas ou revogadas.",
         code: "AUTH_ERROR",
+        authDiagnostics: diag,
       },
-      { status: 401 }
+      {
+        status: 401,
+        headers,
+      }
     );
   }
 

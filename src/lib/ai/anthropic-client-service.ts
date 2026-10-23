@@ -16,6 +16,19 @@ import { isAiRefusal } from "@/lib/security/content-guard";
 import { aiTelemetryService } from "./telemetry/service";
 import { AIOperationType, TokenUsage } from "./telemetry/types";
 
+export interface AIAuthDiagnostics {
+  providerMode: "Anthropic Claude (Oficial)" | "OpenRouter (Claude Compatibility)";
+  sourceEnv: "ANTHROPIC_API_KEY" | "OPENROUTER_API_KEY" | "explicit_arg" | "unknown";
+  targetUrl: string;
+  keyPrefix: string;
+  keySuffix: string;
+  keyLength: number;
+  hasOpenRouterKeyEnv: boolean;
+  hasAnthropicKeyEnv: boolean;
+  aiProviderEnv: string;
+  model: string;
+}
+
 export class AnthropicClientService implements IAIService {
   public providerName = "Anthropic Claude (Oficial)";
   private client: Anthropic | null = null;
@@ -23,13 +36,23 @@ export class AnthropicClientService implements IAIService {
   private model: string;
   private isOpenRouter: boolean;
   private openRouterModel: string;
+  private sourceEnv: "ANTHROPIC_API_KEY" | "OPENROUTER_API_KEY" | "explicit_arg" | "unknown";
 
-  constructor(apiKey?: string, model?: string) {
-    const rawKey =
-      apiKey ||
-      process.env.ANTHROPIC_API_KEY ||
-      process.env.OPENROUTER_API_KEY ||
-      "";
+  constructor(apiKey?: string, model?: string, sourceEnv?: "ANTHROPIC_API_KEY" | "OPENROUTER_API_KEY" | "explicit_arg") {
+    let resolvedSource: "ANTHROPIC_API_KEY" | "OPENROUTER_API_KEY" | "explicit_arg" | "unknown" = "unknown";
+    let rawKey = "";
+
+    if (apiKey) {
+      rawKey = apiKey;
+      resolvedSource = sourceEnv || "explicit_arg";
+    } else if (process.env.ANTHROPIC_API_KEY) {
+      rawKey = process.env.ANTHROPIC_API_KEY;
+      resolvedSource = "ANTHROPIC_API_KEY";
+    } else if (process.env.OPENROUTER_API_KEY) {
+      rawKey = process.env.OPENROUTER_API_KEY;
+      resolvedSource = "OPENROUTER_API_KEY";
+    }
+
     const cleanKey = rawKey.replace(/[\r\n"']/g, "").trim();
     if (!cleanKey) {
       throw new AIConfigurationError(
@@ -38,15 +61,24 @@ export class AnthropicClientService implements IAIService {
     }
 
     this.apiKey = cleanKey;
+    this.sourceEnv = resolvedSource;
 
-    // Detecta se a chave ou ambiente são do OpenRouter
+    // Detecção estrita e sem ambiguidade:
+    // Se a chave começar com sk-ant-, ela é OBRIGATORIAMENTE da Anthropic Oficial
+    // Se a chave começar com sk-or-, ela é OBRIGATORIAMENTE do OpenRouter
     const envBaseUrl = (process.env.ANTHROPIC_BASE_URL || "").toLowerCase();
     const envProvider = (process.env.AI_PROVIDER || "").toLowerCase();
-    this.isOpenRouter =
-      cleanKey.startsWith("sk-or-") ||
-      Boolean(process.env.OPENROUTER_API_KEY) ||
-      envBaseUrl.includes("openrouter.ai") ||
-      envProvider.includes("openrouter");
+
+    if (cleanKey.startsWith("sk-ant-")) {
+      this.isOpenRouter = false;
+    } else if (cleanKey.startsWith("sk-or-")) {
+      this.isOpenRouter = true;
+    } else {
+      this.isOpenRouter =
+        Boolean(process.env.OPENROUTER_API_KEY) ||
+        envBaseUrl.includes("openrouter.ai") ||
+        envProvider.includes("openrouter");
+    }
 
     const rawModel =
       model ||
@@ -78,6 +110,23 @@ export class AnthropicClientService implements IAIService {
         baseURL: "https://api.anthropic.com",
       });
     }
+  }
+
+  public getAuthDiagnostics(): AIAuthDiagnostics {
+    return {
+      providerMode: this.isOpenRouter ? "OpenRouter (Claude Compatibility)" : "Anthropic Claude (Oficial)",
+      sourceEnv: this.sourceEnv,
+      targetUrl: this.isOpenRouter
+        ? "https://openrouter.ai/api/v1/chat/completions"
+        : "https://api.anthropic.com/v1/messages",
+      keyPrefix: this.apiKey ? this.apiKey.slice(0, 10) : "",
+      keySuffix: this.apiKey ? this.apiKey.slice(-4) : "",
+      keyLength: this.apiKey ? this.apiKey.length : 0,
+      hasOpenRouterKeyEnv: Boolean(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY.trim()),
+      hasAnthropicKeyEnv: Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim()),
+      aiProviderEnv: (process.env.AI_PROVIDER || "").replace(/[\r\n"']/g, "").trim() || "não definido",
+      model: this.isOpenRouter ? this.openRouterModel : this.model,
+    };
   }
 
   /**
@@ -120,9 +169,15 @@ export class AnthropicClientService implements IAIService {
         console.error("[OpenRouter API Error]", res.status, errText.slice(0, 200));
 
         if (res.status === 401) {
-          throw new AIAuthenticationError(
+          const authErr = new AIAuthenticationError(
             "Falha de autenticação com o provedor de IA. Credenciais inválidas ou revogadas."
           );
+          Object.assign(authErr, {
+            status: 401,
+            name: "AuthenticationError",
+            authDiagnostics: this.getAuthDiagnostics(),
+          });
+          throw authErr;
         }
         if (res.status === 429) {
           throw new AIRateLimitError("Limite de requisições excedido no provedor de IA.");
@@ -351,7 +406,11 @@ export class AnthropicClientService implements IAIService {
           const authErr = new AIAuthenticationError(
             effectiveErrMsg || "Falha de autenticação com o provedor de IA. Credenciais inválidas ou revogadas."
           );
-          Object.assign(authErr, { status: 401, name: "AuthenticationError" });
+          Object.assign(authErr, {
+            status: 401,
+            name: "AuthenticationError",
+            authDiagnostics: this.getAuthDiagnostics(),
+          });
           throw authErr;
         }
 
