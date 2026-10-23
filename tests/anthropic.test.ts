@@ -426,4 +426,147 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
       expect(json.summary).toBeTruthy();
     });
   });
+
+  describe("5. Regras Obrigatórias de Isolamento Anthropic e Zero Desvio para OpenRouter", () => {
+    it("AI_PROVIDER=anthropic usa exclusivamente https://api.anthropic.com", () => {
+      process.env.AI_PROVIDER = "anthropic";
+      process.env.ANTHROPIC_API_KEY = "sk-ant-test-official-123456";
+      const service = getAIService() as AnthropicClientService;
+
+      expect(service.providerName).toBe("Anthropic Claude (Oficial)");
+      const diag = service.getAuthDiagnostics();
+      expect(diag.targetUrl).toBe("https://api.anthropic.com/v1/messages");
+      expect(diag.providerMode).toBe("Anthropic Claude (Oficial)");
+    });
+
+    it("A presença simultânea de ANTHROPIC_API_KEY e OPENROUTER_API_KEY não altera o provedor selecionado", () => {
+      process.env.AI_PROVIDER = "anthropic";
+      process.env.ANTHROPIC_API_KEY = "sk-ant-test-official-123456";
+      process.env.OPENROUTER_API_KEY = "sk-or-v1-abcdef1234567890abcdef";
+      const service = getAIService() as AnthropicClientService;
+
+      expect(service.providerName).toBe("Anthropic Claude (Oficial)");
+      const diag = service.getAuthDiagnostics();
+      expect(diag.targetUrl).toBe("https://api.anthropic.com/v1/messages");
+      expect(diag.providerMode).toBe("Anthropic Claude (Oficial)");
+      expect(diag.hasOpenRouterKeyEnv).toBe(true);
+      expect(diag.hasAnthropicKeyEnv).toBe(true);
+    });
+
+    it("OPENAI_BASE_URL e ANTHROPIC_BASE_URL apontando para OpenRouter não desviam uma chamada Anthropic", () => {
+      process.env.AI_PROVIDER = "anthropic";
+      process.env.ANTHROPIC_API_KEY = "sk-ant-test-official-123456";
+      process.env.OPENAI_BASE_URL = "https://openrouter.ai/api/v1";
+      process.env.ANTHROPIC_BASE_URL = "https://openrouter.ai/api/v1";
+      const service = new AnthropicClientService();
+
+      expect(service.providerName).toBe("Anthropic Claude (Oficial)");
+      const diag = service.getAuthDiagnostics();
+      expect(diag.targetUrl).toBe("https://api.anthropic.com/v1/messages");
+    });
+
+    it("A ausência de ANTHROPIC_API_KEY com OPENROUTER_API_KEY presente não provoca fallback para OpenRouter", () => {
+      process.env.AI_PROVIDER = "anthropic";
+      delete process.env.ANTHROPIC_API_KEY;
+      process.env.OPENROUTER_API_KEY = "sk-or-v1-abcdef1234567890abcdef";
+
+      expect(() => getAIService()).toThrowError(AIConfigurationError);
+      expect(() => getAIService()).toThrowError(/ANTHROPIC_API_KEY ausente/);
+    });
+
+    it("Uma chave de OpenRouter não é enviada à Anthropic nem desvia a chamada silenciosamente", () => {
+      process.env.AI_PROVIDER = "anthropic";
+      process.env.ANTHROPIC_API_KEY = "sk-or-v1-fake-openrouter-key";
+
+      expect(() => getAIService()).toThrowError(AIConfigurationError);
+      expect(() => getAIService()).toThrowError(/incompatível com o provedor Anthropic oficial/);
+      expect(() => new AnthropicClientService("sk-or-v1-fake-openrouter-key")).toThrowError(
+        /incompatível com o provedor Anthropic oficial/
+      );
+    });
+
+    it("AI_PROVIDER=openrouter continua funcionando de forma explícita", () => {
+      process.env.AI_PROVIDER = "openrouter";
+      process.env.OPENROUTER_API_KEY = "sk-or-v1-testkey1234567890abcdef";
+      const service = getAIService() as AnthropicClientService;
+
+      expect(service.providerName).toBe("OpenRouter (Claude Compatibility)");
+      const diag = service.getAuthDiagnostics();
+      expect(diag.targetUrl).toBe("https://openrouter.ai/api/v1/chat/completions");
+      expect(diag.providerMode).toBe("OpenRouter (Claude Compatibility)");
+    });
+
+    it("Nenhum fallback silencioso para mock ou outro provedor ocorre em produção quando falta a chave", () => {
+      delete process.env.ANTHROPIC_API_KEY;
+      delete process.env.OPENROUTER_API_KEY;
+      delete process.env.AI_PROVIDER;
+
+      expect(() => getAIService()).toThrowError(AIConfigurationError);
+      expect(() => getAIService()).toThrowError(/ANTHROPIC_API_KEY ausente/);
+    });
+
+    it("Os diagnósticos identificam corretamente o provedor efetivo sem revelar credenciais", () => {
+      process.env.AI_PROVIDER = "anthropic";
+      process.env.ANTHROPIC_API_KEY = "sk-ant-usr-1-secretlongkey9876543210abcdef";
+      const service = new AnthropicClientService();
+      const diag = service.getAuthDiagnostics();
+
+      expect(diag.providerMode).toBe("Anthropic Claude (Oficial)");
+      expect(diag.targetUrl).toBe("https://api.anthropic.com/v1/messages");
+      expect(diag.keyPrefix).toBe("sk-ant-usr");
+      expect(diag.keySuffix).toBe("cdef");
+      expect(diag.keyLength).toBe("sk-ant-usr-1-secretlongkey9876543210abcdef".length);
+      // NUNCA expõe a chave completa
+      expect(JSON.stringify(diag)).not.toContain("secretlongkey9876543210");
+    });
+
+    it("deve lançar AIConfigurationError se AI_PROVIDER=anthropic e forceOpenRouter=true entrarem em conflito", () => {
+      process.env.AI_PROVIDER = "anthropic";
+      process.env.ANTHROPIC_API_KEY = "sk-ant-test-official-123456";
+      process.env.OPENROUTER_API_KEY = "sk-or-v1-abcdef1234567890abcdef";
+
+      expect(
+        () => new AnthropicClientService("sk-ant-test-official-123456", undefined, "ANTHROPIC_API_KEY", true)
+      ).toThrowError(AIConfigurationError);
+
+      expect(
+        () => new AnthropicClientService("sk-ant-test-official-123456", undefined, "ANTHROPIC_API_KEY", true)
+      ).toThrowError(/Conflito de configuração de IA/);
+    });
+
+    it("deve lançar AIConfigurationError se AI_PROVIDER=openrouter e forceOpenRouter=false entrarem em conflito", () => {
+      process.env.AI_PROVIDER = "openrouter";
+      process.env.OPENROUTER_API_KEY = "sk-or-v1-testkey1234567890abcdef";
+
+      expect(
+        () => new AnthropicClientService("sk-or-v1-testkey1234567890abcdef", undefined, "OPENROUTER_API_KEY", false)
+      ).toThrowError(AIConfigurationError);
+
+      expect(
+        () => new AnthropicClientService("sk-or-v1-testkey1234567890abcdef", undefined, "OPENROUTER_API_KEY", false)
+      ).toThrowError(/Conflito de configuração de IA/);
+    });
+
+    it("quando AI_PROVIDER estiver ausente, forceOpenRouter booleano define o provedor com precisão", () => {
+      delete process.env.AI_PROVIDER;
+      process.env.OPENROUTER_API_KEY = "sk-or-v1-testkey1234567890abcdef";
+      process.env.ANTHROPIC_API_KEY = "sk-ant-test-official-123456";
+
+      const orService = new AnthropicClientService(
+        "sk-or-v1-testkey1234567890abcdef",
+        undefined,
+        "OPENROUTER_API_KEY",
+        true
+      );
+      expect(orService.providerName).toBe("OpenRouter (Claude Compatibility)");
+
+      const antService = new AnthropicClientService(
+        "sk-ant-test-official-123456",
+        undefined,
+        "ANTHROPIC_API_KEY",
+        false
+      );
+      expect(antService.providerName).toBe("Anthropic Claude (Oficial)");
+    });
+  });
 });

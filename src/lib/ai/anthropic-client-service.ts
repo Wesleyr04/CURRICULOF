@@ -38,59 +38,103 @@ export class AnthropicClientService implements IAIService {
   private openRouterModel: string;
   private sourceEnv: "ANTHROPIC_API_KEY" | "OPENROUTER_API_KEY" | "explicit_arg" | "unknown";
 
-  constructor(apiKey?: string, model?: string, sourceEnv?: "ANTHROPIC_API_KEY" | "OPENROUTER_API_KEY" | "explicit_arg") {
+  constructor(
+    apiKey?: string,
+    model?: string,
+    sourceEnv?: "ANTHROPIC_API_KEY" | "OPENROUTER_API_KEY" | "explicit_arg",
+    forceOpenRouter?: boolean
+  ) {
+    const envProvider = (process.env.AI_PROVIDER || "").replace(/[\r\n"']/g, "").toLowerCase().trim();
+
+    // Requisito 1: Precedência absoluta de AI_PROVIDER=anthropic sobre forceOpenRouter
+    if (envProvider === "anthropic" && forceOpenRouter === true) {
+      throw new AIConfigurationError(
+        "Conflito de configuração de IA: AI_PROVIDER está configurado como 'anthropic', mas forceOpenRouter=true foi solicitado. O modo Anthropic oficial proíbe estritamente o uso do OpenRouter."
+      );
+    }
+
+    if (envProvider === "openrouter" && forceOpenRouter === false) {
+      throw new AIConfigurationError(
+        "Conflito de configuração de IA: AI_PROVIDER está configurado como 'openrouter', mas forceOpenRouter=false foi solicitado."
+      );
+    }
+
     let resolvedSource: "ANTHROPIC_API_KEY" | "OPENROUTER_API_KEY" | "explicit_arg" | "unknown" = "unknown";
     let rawKey = "";
 
     if (apiKey) {
       rawKey = apiKey;
       resolvedSource = sourceEnv || "explicit_arg";
-    } else if (process.env.ANTHROPIC_API_KEY) {
-      rawKey = process.env.ANTHROPIC_API_KEY;
+    } else if (envProvider === "anthropic") {
+      // Quando AI_PROVIDER=anthropic, busca exclusivamente ANTHROPIC_API_KEY
+      rawKey = process.env.ANTHROPIC_API_KEY || "";
       resolvedSource = "ANTHROPIC_API_KEY";
-    } else if (process.env.OPENROUTER_API_KEY) {
-      rawKey = process.env.OPENROUTER_API_KEY;
+    } else if (envProvider === "openrouter" || forceOpenRouter === true) {
+      // Quando AI_PROVIDER=openrouter ou forceOpenRouter=true (sem conflito), busca OPENROUTER_API_KEY
+      rawKey = process.env.OPENROUTER_API_KEY || "";
       resolvedSource = "OPENROUTER_API_KEY";
+    } else {
+      // Quando AI_PROVIDER estiver ausente: padrão é Anthropic oficial
+      rawKey = process.env.ANTHROPIC_API_KEY || "";
+      resolvedSource = "ANTHROPIC_API_KEY";
     }
 
     const cleanKey = rawKey.replace(/[\r\n"']/g, "").trim();
     if (!cleanKey) {
+      if (resolvedSource === "OPENROUTER_API_KEY" || envProvider === "openrouter" || forceOpenRouter === true) {
+        throw new AIConfigurationError(
+          "A chave OPENROUTER_API_KEY não foi configurada no ambiente do servidor."
+        );
+      }
       throw new AIConfigurationError(
-        "A chave de API da IA (ANTHROPIC_API_KEY ou OPENROUTER_API_KEY) não foi configurada no servidor."
+        "A chave ANTHROPIC_API_KEY não foi configurada no ambiente do servidor."
       );
     }
 
     this.apiKey = cleanKey;
     this.sourceEnv = resolvedSource;
 
-    // Detecção estrita e sem ambiguidade:
-    // 1. Suporta o novo prefixo oficial obrigatório 'sk-ant-usr-1' do novo painel da Anthropic
-    // 2. Mantém compatibilidade com 'sk-ant-api03-' e 'sk-ant-' legados
-    // 3. Qualquer chave com esses prefixos é OBRIGATORIAMENTE da Anthropic Oficial (isOpenRouter = false)
-    const envBaseUrl = (process.env.ANTHROPIC_BASE_URL || "").toLowerCase();
-    const envProvider = (process.env.AI_PROVIDER || "").toLowerCase();
-
-    const isAnthropicOfficialKey =
-      cleanKey.startsWith("sk-ant-usr-1") ||
-      cleanKey.startsWith("sk-ant-api03-") ||
-      cleanKey.startsWith("sk-ant-");
-
-    if (isAnthropicOfficialKey) {
+    // Regras de precedência para this.isOpenRouter:
+    // 1. Se AI_PROVIDER=anthropic, é OBRIGATORIAMENTE Anthropic Oficial (this.isOpenRouter = false)
+    // 2. Se AI_PROVIDER=openrouter, é OBRIGATORIAMENTE OpenRouter (this.isOpenRouter = true)
+    // 3. Se AI_PROVIDER não estiver configurado:
+    //    - Se forceOpenRouter for booleano explícito, respeita forceOpenRouter
+    //    - Se sourceEnv for OPENROUTER_API_KEY ou a chave começar com sk-or-, é OpenRouter
+    //    - Em todos os outros casos, é Anthropic Oficial (this.isOpenRouter = false)
+    if (envProvider === "anthropic") {
       this.isOpenRouter = false;
-    } else if (cleanKey.startsWith("sk-or-")) {
+    } else if (envProvider === "openrouter") {
+      this.isOpenRouter = true;
+    } else if (typeof forceOpenRouter === "boolean") {
+      this.isOpenRouter = forceOpenRouter;
+    } else if (resolvedSource === "OPENROUTER_API_KEY" || cleanKey.startsWith("sk-or-")) {
       this.isOpenRouter = true;
     } else {
-      this.isOpenRouter =
-        Boolean(process.env.OPENROUTER_API_KEY) ||
-        envBaseUrl.includes("openrouter.ai") ||
-        envProvider.includes("openrouter");
+      this.isOpenRouter = false;
     }
 
+    // Regra 4: Se o provedor for Anthropic oficial, mas a chave for manifestamente do OpenRouter (sk-or-),
+    // bloqueia com AIConfigurationError sem enviar para nenhum endpoint.
+    if (!this.isOpenRouter && cleanKey.startsWith("sk-or-")) {
+      throw new AIConfigurationError(
+        "A chave informada possui formato do OpenRouter (sk-or-), incompatível com o provedor Anthropic oficial. Configure uma chave oficial da Anthropic ou defina AI_PROVIDER=openrouter."
+      );
+    }
+
+    // Se o modo for OpenRouter, mas a chave for da Anthropic (sk-ant-),
+    // bloqueia para impedir vazamento de credenciais da Anthropic para o OpenRouter.
+    if (this.isOpenRouter && cleanKey.startsWith("sk-ant-")) {
+      throw new AIConfigurationError(
+        "A chave informada possui formato oficial da Anthropic (sk-ant-), mas o provedor selecionado é o OpenRouter. Configure uma chave válida do OpenRouter (sk-or-) ou defina AI_PROVIDER=anthropic."
+      );
+    }
+
+    // Regra 8: Modelo configurável via ANTHROPIC_MODEL (permite claude-3-5-haiku-latest, claude-3-7-sonnet-latest, etc.)
     const rawModel =
       model ||
-      process.env.ANTHROPIC_MODEL ||
-      process.env.OPENROUTER_MODEL ||
-      (this.isOpenRouter ? "anthropic/claude-3.5-haiku" : "claude-3-5-haiku-20241022");
+      (this.isOpenRouter
+        ? process.env.OPENROUTER_MODEL || "anthropic/claude-3.5-haiku"
+        : process.env.ANTHROPIC_MODEL || "claude-3-5-haiku-20241022");
     const cleanModel = (typeof rawModel === "string" ? rawModel : "").replace(/[\r\n"']/g, "").trim();
 
     if (!cleanModel) {
@@ -107,10 +151,12 @@ export class AnthropicClientService implements IAIService {
         : cleanModel.startsWith("claude")
         ? `anthropic/${cleanModel.replace("-20241022", "")}`
         : cleanModel;
+      this.client = null;
     } else {
       this.providerName = "Anthropic Claude (Oficial)";
       this.openRouterModel = cleanModel;
-      // Força baseURL oficial da Anthropic para evitar que ANTHROPIC_BASE_URL mal configurada quebre chamadas nativas
+      // Regras 3, 4 e 5: Força obrigatoriamente baseURL oficial da Anthropic,
+      // ignorando OPENAI_BASE_URL, ANTHROPIC_BASE_URL ou qualquer outra variável.
       this.client = new Anthropic({
         apiKey: cleanKey,
         baseURL: "https://api.anthropic.com",
@@ -277,8 +323,12 @@ export class AnthropicClientService implements IAIService {
     operationType: AIOperationType = "unknown",
     correlationId?: string
   ): Promise<string> {
-    if (this.isOpenRouter || !this.client) {
+    if (this.isOpenRouter) {
       return this.callOpenRouterApi(promptText, maxTokens, operationType, correlationId);
+    }
+
+    if (!this.client) {
+      throw new AIConfigurationError("Cliente oficial da Anthropic não foi inicializado.");
     }
 
     const startTime = Date.now();

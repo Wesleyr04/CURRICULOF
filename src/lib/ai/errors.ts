@@ -115,7 +115,6 @@ export function handleAIRouteError(error: unknown): NextResponse {
   const errorName = typeof errObj?.name === "string" ? errObj.name : "";
   const rawMsg = typeof errObj?.message === "string" ? errObj.message : String(error);
   const safeMessage = sanitizeAiErrorMessage(rawMsg);
-  const isDev = process.env.NODE_ENV !== "production";
 
   // Registro forense incondicional de erro no servidor (Zero-PII de secrets)
   console.error("[AI Route Error]", {
@@ -158,32 +157,34 @@ function getRuntimeAuthDiagnostics(errObj?: Record<string, unknown> | null): Rec
     return errObj.authDiagnostics as Record<string, unknown>;
   }
 
+  const envProvider = (process.env.AI_PROVIDER || "").replace(/[\r\n"']/g, "").trim().toLowerCase();
   const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim());
   const hasOpenRouter = Boolean(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY.trim());
-  const sourceEnv = hasAnthropic ? "ANTHROPIC_API_KEY" : hasOpenRouter ? "OPENROUTER_API_KEY" : "nenhuma";
-  const rawKey = (process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY || "").replace(/[\r\n"']/g, "").trim();
 
-  const isAnthropicOfficial =
-    rawKey.startsWith("sk-ant-usr-1") ||
-    rawKey.startsWith("sk-ant-api03-") ||
-    rawKey.startsWith("sk-ant-");
+  const isOpenRouter = envProvider === "openrouter";
+  const sourceEnv = isOpenRouter
+    ? (hasOpenRouter ? "OPENROUTER_API_KEY" : "nenhuma")
+    : (hasAnthropic ? "ANTHROPIC_API_KEY" : "nenhuma");
 
-  const isOr =
-    rawKey.startsWith("sk-or-") ||
-    (!isAnthropicOfficial &&
-      (hasOpenRouter || (process.env.AI_PROVIDER || "").toLowerCase().includes("openrouter")));
+  const rawKey = (
+    isOpenRouter
+      ? process.env.OPENROUTER_API_KEY || ""
+      : process.env.ANTHROPIC_API_KEY || ""
+  ).replace(/[\r\n"']/g, "").trim();
 
   return {
-    providerMode: isOr ? "OpenRouter (Claude Compatibility)" : "Anthropic Claude (Oficial)",
+    providerMode: isOpenRouter ? "OpenRouter (Claude Compatibility)" : "Anthropic Claude (Oficial)",
     sourceEnv,
-    targetUrl: isOr ? "https://openrouter.ai/api/v1/chat/completions" : "https://api.anthropic.com/v1/messages",
+    targetUrl: isOpenRouter ? "https://openrouter.ai/api/v1/chat/completions" : "https://api.anthropic.com/v1/messages",
     keyPrefix: rawKey ? rawKey.slice(0, 10) : "",
     keySuffix: rawKey ? rawKey.slice(-4) : "",
     keyLength: rawKey.length,
     hasAnthropicKeyEnv: hasAnthropic,
     hasOpenRouterKeyEnv: hasOpenRouter,
-    aiProviderEnv: (process.env.AI_PROVIDER || "").replace(/[\r\n"']/g, "").trim() || "não definido",
-    model: process.env.ANTHROPIC_MODEL || process.env.OPENROUTER_MODEL || "claude-3-5-haiku-20241022",
+    aiProviderEnv: envProvider || "não definido",
+    model: isOpenRouter
+      ? process.env.OPENROUTER_MODEL || "anthropic/claude-3.5-haiku"
+      : process.env.ANTHROPIC_MODEL || "claude-3-5-haiku-20241022",
   };
 }
 

@@ -38,29 +38,34 @@ export function getAIService(): IAIService {
     );
   }
 
-  // 4. Provedor Anthropic / OpenRouter (Padrão Oficial de Alta Fidelidade)
-  // Se AI_PROVIDER não for 'mock', a integração de IA em nuvem é obrigatória.
-  // Suporta ANTHROPIC_API_KEY ou OPENROUTER_API_KEY.
-  let sourceEnv: "ANTHROPIC_API_KEY" | "OPENROUTER_API_KEY" = "ANTHROPIC_API_KEY";
-  let rawKey = process.env.ANTHROPIC_API_KEY || "";
-  if (!rawKey.trim() && process.env.OPENROUTER_API_KEY) {
-    rawKey = process.env.OPENROUTER_API_KEY;
-    sourceEnv = "OPENROUTER_API_KEY";
+  // 4. Provedor OpenRouter isolado (APENAS se explicitamente selecionado via AI_PROVIDER=openrouter)
+  if (provider === "openrouter") {
+    const openrouterKey = (process.env.OPENROUTER_API_KEY || "").replace(/[\r\n"']/g, "").trim();
+    if (!openrouterKey) {
+      throw new AIConfigurationError(
+        "AI_PROVIDER está configurado como 'openrouter', mas OPENROUTER_API_KEY não foi configurada no ambiente."
+      );
+    }
+    const rawModel = (process.env.OPENROUTER_MODEL || process.env.ANTHROPIC_MODEL || "").replace(/[\r\n"']/g, "").trim();
+    return new AnthropicClientService(openrouterKey, rawModel || undefined, "OPENROUTER_API_KEY", true);
   }
 
-  const apiKey = rawKey.replace(/[\r\n"']/g, "").trim();
-  if (!apiKey) {
+  // 5. Provedor Anthropic Oficial (Padrão quando AI_PROVIDER=anthropic ou quando AI_PROVIDER não estiver definido)
+  // Regras 3, 4, 5 e 6: Exige ANTHROPIC_API_KEY e NUNCA faz fallback silencioso para OPENROUTER_API_KEY.
+  const rawKey = (process.env.ANTHROPIC_API_KEY || "").replace(/[\r\n"']/g, "").trim();
+  if (!rawKey) {
     throw new AIConfigurationError(
-      "ANTHROPIC_API_KEY ausente no ambiente do servidor (defina ANTHROPIC_API_KEY ou OPENROUTER_API_KEY no painel de deploy)."
+      "ANTHROPIC_API_KEY ausente no ambiente do servidor. Configure ANTHROPIC_API_KEY no painel de deploy."
     );
   }
 
-  const rawModel =
-    process.env.ANTHROPIC_MODEL ||
-    process.env.OPENROUTER_MODEL ||
-    "";
-  const cleanModel = rawModel.replace(/[\r\n"']/g, "").trim();
+  if (rawKey.startsWith("sk-or-")) {
+    throw new AIConfigurationError(
+      "A chave configurada em ANTHROPIC_API_KEY é do OpenRouter (sk-or-), incompatível com o provedor Anthropic oficial. Configure uma chave oficial da Anthropic ou defina AI_PROVIDER=openrouter."
+    );
+  }
 
-  return new AnthropicClientService(apiKey, cleanModel || undefined, sourceEnv);
+  const rawModel = (process.env.ANTHROPIC_MODEL || "").replace(/[\r\n"']/g, "").trim();
+  return new AnthropicClientService(rawKey, rawModel || undefined, "ANTHROPIC_API_KEY", false);
 }
 

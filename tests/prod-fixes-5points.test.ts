@@ -48,14 +48,16 @@ describe("Correções de Produção - 5 Problemas Reais de UX/Mobile/IA", () => 
   });
 
   describe("2. Suporte a OpenRouter e Anthropic Oficial Isolada", () => {
-    it("deve detectar chave OpenRouter (sk-or-) e configurar providerName apropriado", () => {
-      process.env.ANTHROPIC_API_KEY = "sk-or-v1-abcdef1234567890abcdef";
+    it("deve configurar OpenRouter isolado quando AI_PROVIDER=openrouter e OPENROUTER_API_KEY estiver configurada", () => {
+      process.env.AI_PROVIDER = "openrouter";
+      process.env.OPENROUTER_API_KEY = "sk-or-v1-abcdef1234567890abcdef";
       const service = new AnthropicClientService();
 
       expect(service.providerName).toContain("OpenRouter");
     });
 
-    it("deve utilizar Anthropic Claude (Oficial) com baseURL oficial quando a chave for sk-ant-", () => {
+    it("deve utilizar Anthropic Claude (Oficial) com baseURL oficial quando a chave for da Anthropic", () => {
+      process.env.AI_PROVIDER = "anthropic";
       process.env.ANTHROPIC_API_KEY = "sk-ant-api03-abcdef1234567890abcdef";
       const service = new AnthropicClientService();
 
@@ -63,6 +65,7 @@ describe("Correções de Produção - 5 Problemas Reais de UX/Mobile/IA", () => 
     });
 
     it("deve validar com sucesso e considerar Anthropic Oficial quando o prefixo for sk-ant-usr-1", () => {
+      process.env.AI_PROVIDER = "anthropic";
       process.env.ANTHROPIC_API_KEY = "sk-ant-usr-1-testkey1234567890abcdef";
       const service = new AnthropicClientService();
 
@@ -73,12 +76,23 @@ describe("Correções de Produção - 5 Problemas Reais de UX/Mobile/IA", () => 
       expect(diag.keyPrefix).toBe("sk-ant-usr");
     });
 
-    it("factory deve aceitar OPENROUTER_API_KEY quando ANTHROPIC_API_KEY não estiver setada", () => {
+    it("factory deve aceitar OPENROUTER_API_KEY apenas quando AI_PROVIDER=openrouter for explicitamente configurado", () => {
+      process.env.AI_PROVIDER = "openrouter";
       delete process.env.ANTHROPIC_API_KEY;
       process.env.OPENROUTER_API_KEY = "sk-or-v1-abcdef1234567890abcdef";
 
       const service = getAIService();
       expect(service.providerName).toContain("OpenRouter");
+    });
+
+    it("factory não deve fazer fallback para OPENROUTER_API_KEY quando AI_PROVIDER=anthropic e ANTHROPIC_API_KEY estiver ausente", () => {
+      process.env.AI_PROVIDER = "anthropic";
+      delete process.env.ANTHROPIC_API_KEY;
+      process.env.OPENROUTER_API_KEY = "sk-or-v1-abcdef1234567890abcdef";
+
+      expect(() => getAIService()).toThrowError(
+        /ANTHROPIC_API_KEY ausente no ambiente do servidor/
+      );
     });
   });
 
