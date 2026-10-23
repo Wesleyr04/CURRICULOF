@@ -62,6 +62,17 @@ describe("Correções de Produção - 5 Problemas Reais de UX/Mobile/IA", () => 
       expect(service.providerName).toContain("Anthropic Claude (Oficial)");
     });
 
+    it("deve validar com sucesso e considerar Anthropic Oficial quando o prefixo for sk-ant-usr-1", () => {
+      process.env.ANTHROPIC_API_KEY = "sk-ant-usr-1-testkey1234567890abcdef";
+      const service = new AnthropicClientService();
+
+      expect(service.providerName).toBe("Anthropic Claude (Oficial)");
+      const diag = service.getAuthDiagnostics();
+      expect(diag.providerMode).toBe("Anthropic Claude (Oficial)");
+      expect(diag.targetUrl).toBe("https://api.anthropic.com/v1/messages");
+      expect(diag.keyPrefix).toBe("sk-ant-usr");
+    });
+
     it("factory deve aceitar OPENROUTER_API_KEY quando ANTHROPIC_API_KEY não estiver setada", () => {
       delete process.env.ANTHROPIC_API_KEY;
       process.env.OPENROUTER_API_KEY = "sk-or-v1-abcdef1234567890abcdef";

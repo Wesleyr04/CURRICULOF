@@ -163,9 +163,14 @@ function getRuntimeAuthDiagnostics(errObj?: Record<string, unknown> | null): Rec
   const sourceEnv = hasAnthropic ? "ANTHROPIC_API_KEY" : hasOpenRouter ? "OPENROUTER_API_KEY" : "nenhuma";
   const rawKey = (process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY || "").replace(/[\r\n"']/g, "").trim();
 
+  const isAnthropicOfficial =
+    rawKey.startsWith("sk-ant-usr-1") ||
+    rawKey.startsWith("sk-ant-api03-") ||
+    rawKey.startsWith("sk-ant-");
+
   const isOr =
     rawKey.startsWith("sk-or-") ||
-    (!rawKey.startsWith("sk-ant-") &&
+    (!isAnthropicOfficial &&
       (hasOpenRouter || (process.env.AI_PROVIDER || "").toLowerCase().includes("openrouter")));
 
   return {

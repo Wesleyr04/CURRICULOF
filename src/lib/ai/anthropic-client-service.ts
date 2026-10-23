@@ -64,12 +64,18 @@ export class AnthropicClientService implements IAIService {
     this.sourceEnv = resolvedSource;
 
     // Detecção estrita e sem ambiguidade:
-    // Se a chave começar com sk-ant-, ela é OBRIGATORIAMENTE da Anthropic Oficial
-    // Se a chave começar com sk-or-, ela é OBRIGATORIAMENTE do OpenRouter
+    // 1. Suporta o novo prefixo oficial obrigatório 'sk-ant-usr-1' do novo painel da Anthropic
+    // 2. Mantém compatibilidade com 'sk-ant-api03-' e 'sk-ant-' legados
+    // 3. Qualquer chave com esses prefixos é OBRIGATORIAMENTE da Anthropic Oficial (isOpenRouter = false)
     const envBaseUrl = (process.env.ANTHROPIC_BASE_URL || "").toLowerCase();
     const envProvider = (process.env.AI_PROVIDER || "").toLowerCase();
 
-    if (cleanKey.startsWith("sk-ant-")) {
+    const isAnthropicOfficialKey =
+      cleanKey.startsWith("sk-ant-usr-1") ||
+      cleanKey.startsWith("sk-ant-api03-") ||
+      cleanKey.startsWith("sk-ant-");
+
+    if (isAnthropicOfficialKey) {
       this.isOpenRouter = false;
     } else if (cleanKey.startsWith("sk-or-")) {
       this.isOpenRouter = true;
