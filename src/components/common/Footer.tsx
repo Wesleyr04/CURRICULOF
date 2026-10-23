@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import Link from "next/link";
 import { ShieldCheck, Mail, Lock } from "lucide-react";

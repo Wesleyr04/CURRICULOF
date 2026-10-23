@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       valid: isValid,
     });
-  } catch (error: any) {
-    return NextResponse.json({ valid: false, error: error?.message }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : "Erro interno ao validar token";
+    return NextResponse.json({ valid: false, error: errorMsg }, { status: 500 });
   }
 }

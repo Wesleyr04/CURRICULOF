@@ -10,13 +10,13 @@ interface LayoutProps {
   isPdfView?: boolean;
 }
 
-export function FirstJobLayout({ data }: LayoutProps) {
+export function FirstJobLayout({ data, isPdfView = false }: LayoutProps) {
   const { personal, target, experiences, education, courses, technicalSkills, softSkills, customization } = data;
 
   const metrics = calculateSmartLayout(data);
   const primaryColor = customization.primaryColor || "#0f172a";
 
-  const isUserProvided = Boolean(personal.fullName?.trim() || personal.email?.trim());
+  const isUserProvided = Boolean(personal.fullName?.trim() || personal.email?.trim() || isPdfView);
 
   // Fallbacks elegantes fiéis ao modelo validado de exemplo apenas se formulário não preenchido
   const displayName = personal.fullName?.trim() || (isUserProvided ? "" : "Felipe Mesquita");
@@ -48,7 +48,7 @@ export function FirstJobLayout({ data }: LayoutProps) {
     >
       {/* Cabeçalho Literal Modelo 1: Esquerda Nome/Subtítulo, Direita Contatos com Ícones */}
       <header
-        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b-2"
+        className="flex flex-row justify-between items-start gap-4 pb-4 border-b-2"
         style={{ borderColor: primaryColor }}
       >
         <div className="space-y-0.5">

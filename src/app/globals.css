@@ -13,7 +13,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -21,15 +21,31 @@ body {
 /* Folha de Currículo em formato A4 */
 .resume-a4-sheet {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
 }
 
-/* Otimização de Impressão Direta A4 (Ctrl+P / Salvar como PDF) */
+/* Otimização de Impressão Direta A4 sem margens padrão do navegador */
 @page {
   size: A4 portrait;
-  margin: 8mm;
+  margin: 0;
 }
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  /* Cores exatas para impressão e exportação fiel em PDF */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
   body {
     background: #ffffff !important;
     color: #000000 !important;
@@ -52,14 +68,39 @@ body {
     display: block !important;
   }
 
-  .resume-a4-sheet {
+  /* Bloqueio do Paywall: Impede visualização e cópia do currículo impresso se o pagamento não estiver confirmado */
+  body:not(.is-paid) .resume-a4-sheet,
+  body:not(.is-paid) #resume-document-root {
+    display: none !important;
+  }
+
+  body:not(.is-paid)::before {
+    content: "Pagamento Pendente: O download e a impressão em alta resolução são liberados após a confirmação do Pix de R$ 5,00 no FastCurrículo.";
+    display: block !important;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 14pt;
+    font-weight: 600;
+    color: #0f172a;
+    text-align: center;
+    padding: 3rem 2rem;
+    margin: 4rem auto;
+    max-width: 620px;
+    border: 2px dashed #059669;
+    background-color: #ecfdf5;
+    border-radius: 12px;
+  }
+
+  .resume-a4-sheet,
+  #resume-document-root {
     box-shadow: none !important;
     border: none !important;
     margin: 0 !important;
     width: 100% !important;
+    min-width: 0 !important;
     max-width: 100% !important;
     min-height: auto !important;
     padding: 0 !important;
+    transform: none !important;
   }
 
   /* Evita quebras de página estranhas dentro de seções e itens */

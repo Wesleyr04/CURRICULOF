@@ -11,13 +11,13 @@ interface LayoutProps {
 
 import { calculateSmartLayout } from "@/lib/smart-layout";
 
-export function MinimalistLayout({ data }: LayoutProps) {
+export function MinimalistLayout({ data, isPdfView = false }: LayoutProps) {
   const { personal, target, experiences, education, courses, technicalSkills, softSkills, languages, customization } = data;
 
   const metrics = calculateSmartLayout(data);
   const primaryColor = customization.primaryColor || "#1E3A5F";
 
-  const isUserProvided = Boolean(personal.fullName?.trim() || personal.email?.trim());
+  const isUserProvided = Boolean(personal.fullName?.trim() || personal.email?.trim() || isPdfView);
 
   // Fallbacks de demonstração apenas quando o usuário ainda não começou a preencher
   const displayName = personal.fullName?.trim() || (isUserProvided ? "" : "Paulo Ferreira");
@@ -49,7 +49,7 @@ export function MinimalistLayout({ data }: LayoutProps) {
     >
       {/* Cabeçalho Modelo 4: Fundo Branco, Linha e Título na cor de destaque ativa */}
       <header
-        className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-5 border-b-2"
+        className="flex flex-row items-start gap-5 pb-5 border-b-2"
         style={{ borderColor: primaryColor }}
       >
         {personal.photoUrl ? (
@@ -110,9 +110,9 @@ export function MinimalistLayout({ data }: LayoutProps) {
       </header>
 
       {/* Corpo em 2 Colunas com auto-adaptação */}
-      <div className={`grid grid-cols-1 md:grid-cols-12 gap-6 pt-5 ${metrics.spacingClass}`}>
+      <div className={`grid grid-cols-12 gap-6 pt-5 ${metrics.spacingClass}`}>
         {/* Coluna Esquerda (~38% da largura - 5 cols) */}
-        <div className={`md:col-span-5 ${metrics.density === "compact" ? "space-y-4" : "space-y-5"}`}>
+        <div className={`col-span-5 ${metrics.density === "compact" ? "space-y-4" : "space-y-5"}`}>
           {/* SOBRE MIM */}
           {showSummary && (
             <section className="space-y-1.5">
@@ -196,7 +196,7 @@ export function MinimalistLayout({ data }: LayoutProps) {
         </div>
 
         {/* Coluna Direita (~62% da largura - 7 cols) */}
-        <div className={`md:col-span-7 ${metrics.density === "compact" ? "space-y-4" : "space-y-5"}`}>
+        <div className={`col-span-7 ${metrics.density === "compact" ? "space-y-4" : "space-y-5"}`}>
           {/* CARREIRA / EXPERIÊNCIA (Omitida se não houver experiências) */}
           {showExperiences && (
             <section className="space-y-2">

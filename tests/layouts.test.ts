@@ -1,16 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { AVAILABLE_LAYOUTS, INITIAL_RESUME_DATA, COLOR_PALETTES } from "@/config/layouts";
+import {
+  AVAILABLE_LAYOUTS,
+  INITIAL_RESUME_DATA,
+  DEMO_RESUME_DATA,
+  EMPTY_RESUME_DATA,
+  COLOR_PALETTES,
+  DEFAULT_LAYOUT_COLORS,
+} from "@/config/layouts";
 import { LayoutType } from "@/types/resume";
 
-describe("Integridade dos 4 Modelos Validados", () => {
-  it("deve conter exatamente os 4 layouts validados por RH com IDs distintos", () => {
-    expect(AVAILABLE_LAYOUTS).toHaveLength(4);
+describe("Integridade dos 5 Modelos Validados", () => {
+  it("deve conter exatamente os 5 layouts validados por RH com IDs distintos", () => {
+    expect(AVAILABLE_LAYOUTS).toHaveLength(5);
     const ids = AVAILABLE_LAYOUTS.map((l) => l.id);
     const expectedIds: LayoutType[] = [
       "first-job",
       "classic-ats",
       "modern",
       "minimalist",
+      "tech-specialist",
     ];
 
     expectedIds.forEach((expected) => {
@@ -85,6 +93,13 @@ describe("Integridade dos 4 Modelos Validados", () => {
     expect(completeResume.creationMode).toBe("complete");
     expect(completeResume.customization.primaryColor).toBe("#6e5034");
   });
+
+  it("deve mapear a paleta de cores característica padrão para cada modelo no DEFAULT_LAYOUT_COLORS", () => {
+    expect(DEFAULT_LAYOUT_COLORS["modern"]).toBe("#6e5034"); // Marrom & Moderno
+    expect(DEFAULT_LAYOUT_COLORS["minimalist"]).toBe("#1e3a5f"); // Azul Linhas Simples
+    expect(DEFAULT_LAYOUT_COLORS["classic-ats"]).toBe("#0f172a"); // Preto / Monocromático
+    expect(DEFAULT_LAYOUT_COLORS["first-job"]).toBe("#0f172a"); // Preto & Branco
+  });
 });
 
 import { calculateSmartLayout, isColorLight } from "@/lib/smart-layout";
@@ -101,8 +116,8 @@ describe("Smart Layout Engine (Auto-adaptação e Contraste)", () => {
         {
           id: "edu1",
           institution: "Escola Exemplo",
+          course: "Ensino Médio",
           degree: "Ensino Médio",
-          fieldOfStudy: "Geral",
           startDate: "2020",
           endDate: "2023",
           status: "concluido" as const,
@@ -126,6 +141,7 @@ describe("Smart Layout Engine (Auto-adaptação e Contraste)", () => {
           role: "Cargo 1",
           startDate: "2020",
           endDate: "2022",
+          current: false,
           description: "Descrição detalhada de atividades de rotina, conciliação e projetos.",
         },
         {
@@ -134,6 +150,7 @@ describe("Smart Layout Engine (Auto-adaptação e Contraste)", () => {
           role: "Cargo 2",
           startDate: "2022",
           endDate: "2024",
+          current: false,
           description: "Liderança de projetos complexos, gestão de equipes e relacionamento executivo.",
         },
         {
@@ -142,6 +159,7 @@ describe("Smart Layout Engine (Auto-adaptação e Contraste)", () => {
           role: "Cargo 3",
           startDate: "2024",
           endDate: "2025",
+          current: false,
           description: "Atuação estratégica e governança.",
         },
       ],
@@ -165,6 +183,19 @@ describe("Smart Layout Engine (Auto-adaptação e Contraste)", () => {
     expect(isColorLight("#0f172a")).toBe(false); // Slate 900
     expect(isColorLight("#1e3a8a")).toBe(false); // Azul Escuro
     expect(isColorLight("#6e5034")).toBe(false); // Marrom
+  });
+
+  it("EMPTY_RESUME_DATA deve iniciar limpo sem resquícios de demonstração de TI", () => {
+    expect(EMPTY_RESUME_DATA.personal.fullName).toBe("");
+    expect(EMPTY_RESUME_DATA.target.jobTitle).toBe("");
+    expect(EMPTY_RESUME_DATA.target.field).toBe("");
+    expect(EMPTY_RESUME_DATA.target.summary).toBe("");
+    expect(EMPTY_RESUME_DATA.experiences).toEqual([]);
+    expect(EMPTY_RESUME_DATA.education).toEqual([]);
+    expect(EMPTY_RESUME_DATA.technicalSkills).toEqual([]);
+    expect(EMPTY_RESUME_DATA.softSkills).toEqual([]);
+    expect(DEMO_RESUME_DATA).toBe(INITIAL_RESUME_DATA);
+    expect(INITIAL_RESUME_DATA.personal.fullName).toContain("Carlos Eduardo Silva");
   });
 });
 

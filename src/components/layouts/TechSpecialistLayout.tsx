@@ -2,7 +2,7 @@
 
 import React from "react";
 import { ResumeData } from "@/types/resume";
-import { Mail, Phone, MapPin, Globe, Terminal, Code2, Cpu, Award, ExternalLink } from "lucide-react";
+import { Mail, Phone, MapPin, Terminal, Code2, Cpu, Award, ExternalLink } from "lucide-react";
 import { LinkedinIcon } from "@/components/common/Icons";
 
 interface LayoutProps {
@@ -11,7 +11,7 @@ interface LayoutProps {
 }
 
 export function TechSpecialistLayout({ data }: LayoutProps) {
-  const { personal, target, experiences, education, courses, certifications, technicalSkills, softSkills, languages, customization } = data;
+  const { personal, target, experiences, education, certifications, technicalSkills, softSkills, languages, customization } = data;
   const primaryColor = customization.primaryColor || "#1e293b"; // Dark slate técnico
 
   const isHidden = (sec: string) => customization.hiddenSections?.includes(sec);
@@ -29,7 +29,7 @@ export function TechSpecialistLayout({ data }: LayoutProps) {
           <div>
             <div className="flex items-center gap-2 text-xs font-mono text-blue-400 mb-1">
               <Terminal className="w-3.5 h-3.5" />
-              <span>// EXPERT_PROFILE</span>
+              <span>{"// EXPERT_PROFILE"}</span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white uppercase">
               {personal.fullName || "Seu Nome Completo"}

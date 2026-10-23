@@ -1,4 +1,4 @@
-import { LayoutMetadata, ResumeData } from "@/types/resume";
+import { LayoutMetadata, ResumeData, LayoutType } from "@/types/resume";
 
 export const AVAILABLE_LAYOUTS: LayoutMetadata[] = [
   {
@@ -33,7 +33,76 @@ export const AVAILABLE_LAYOUTS: LayoutMetadata[] = [
     atsFriendly: true,
     recommendedFor: "Comercial, Logística, Administrativo Sênior e Liderança.",
   },
+  {
+    id: "tech-specialist",
+    name: "Tech & Dev Specialist",
+    description: "Estrutura moderna para desenvolvedores, engenheiros e especialistas em TI, com destaque para stack técnica e certificações.",
+    badge: "Especialista TI & Dev",
+    atsFriendly: true,
+    recommendedFor: "Desenvolvedores, Engenheiros de Software, DevOps e Especialistas em Tecnologia.",
+  },
 ];
+
+export const STORAGE_KEYS = {
+  RESUME_DATA: "fastcurriculo_resume_data_v1",
+  SELECTED_LAYOUT: "fastcurriculo_selected_layout_v1",
+} as const;
+
+/**
+ * Resolução e normalização resiliente de identificadores de layout/template.
+ * Suporta variações como "layout", "templateId", "moderno", "minimalista", etc.
+ */
+export function resolveLayoutId(input: string | null | undefined): LayoutType | null {
+  if (!input) return null;
+  const clean = input.trim().toLowerCase();
+
+  // Mapeamento direto exato
+  if (AVAILABLE_LAYOUTS.some((l) => l.id === clean)) {
+    return clean as LayoutType;
+  }
+
+  // Mapeamento de sinônimos e variações de nomenclatura
+  switch (clean) {
+    case "moderno":
+    case "modern-layout":
+    case "executive":
+    case "executivo":
+      return "modern";
+
+    case "minimalista":
+    case "minimal":
+    case "corporativo":
+      return "minimalist";
+
+    case "firstjob":
+    case "primeiro-emprego":
+    case "jovem-aprendiz":
+    case "estagio":
+      return "first-job";
+
+    case "classic":
+    case "ats":
+    case "simples":
+    case "operacional":
+      return "classic-ats";
+
+    case "tech":
+    case "tech-specialist":
+    case "specialist":
+      return "tech-specialist";
+
+    default:
+      return null;
+  }
+}
+
+export const DEFAULT_LAYOUT_COLORS: Record<string, string> = {
+  "first-job": "#0f172a",
+  "classic-ats": "#0f172a",
+  "modern": "#6e5034",
+  "minimalist": "#1e3a5f",
+  "tech-specialist": "#0f766e",
+};
 
 export const INITIAL_RESUME_DATA: ResumeData = {
   creationMode: "simple",
@@ -134,6 +203,50 @@ export const INITIAL_RESUME_DATA: ResumeData = {
   customization: {
     layoutId: "classic-ats",
     primaryColor: "#1e3a8a", // Navy Blue profissional
+    fontFamily: "sans",
+    fontSize: "base",
+    sectionOrder: [
+      "summary",
+      "experience",
+      "education",
+      "technicalSkills",
+      "softSkills",
+      "courses",
+      "certifications",
+      "languages",
+    ],
+    hiddenSections: [],
+  },
+};
+
+export const DEMO_RESUME_DATA: ResumeData = INITIAL_RESUME_DATA;
+
+export const EMPTY_RESUME_DATA: ResumeData = {
+  creationMode: "simple",
+  personal: {
+    fullName: "",
+    email: "",
+    phone: "",
+    city: "",
+    state: "",
+    linkedin: "",
+    portfolio: "",
+  },
+  target: {
+    jobTitle: "",
+    field: "",
+    summary: "",
+  },
+  experiences: [],
+  education: [],
+  courses: [],
+  certifications: [],
+  technicalSkills: [],
+  softSkills: [],
+  languages: [],
+  customization: {
+    layoutId: "classic-ats",
+    primaryColor: "#0f172a",
     fontFamily: "sans",
     fontSize: "base",
     sectionOrder: [

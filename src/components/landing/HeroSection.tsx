@@ -1,28 +1,34 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowRight, ShieldCheck, CheckCircle2, Zap, MoveHorizontal } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
-import { AVAILABLE_LAYOUTS } from "@/config/layouts";
+import { CAROUSEL_EXAMPLES, CarouselExample } from "@/config/carousel-examples";
 import ArcFlowCarousel, { SmoothSliderItem } from "@/components/ui/arc-flow-carousel";
 import { ModelA4Preview } from "@/components/landing/ModelA4Preview";
+import { CompactExampleModal } from "@/components/landing/CompactExampleModal";
 
 export function HeroSection() {
-  const router = useRouter();
+  const [selectedExample, setSelectedExample] = useState<CarouselExample | null>(null);
 
-  const carouselItems: SmoothSliderItem[] = AVAILABLE_LAYOUTS.map((layout) => ({
-    id: layout.id,
-    title: layout.name,
-    description: layout.description,
-    badge: layout.badge,
-    previewNode: <ModelA4Preview layoutId={layout.id} />,
+  const carouselItems: SmoothSliderItem[] = CAROUSEL_EXAMPLES.map((example) => ({
+    id: example.id,
+    title: example.shortLabel,
+    description: example.resumeData.target.summary,
+    badge: example.badge,
+    previewNode: (
+      <ModelA4Preview
+        layoutId={example.layoutId}
+        resumeData={example.resumeData}
+      />
+    ),
   }));
 
   const handleSelectModel = (item: SmoothSliderItem) => {
-    if (item.id) {
-      router.push(`/editor?layout=${item.id}&mode=simple`);
+    const found = CAROUSEL_EXAMPLES.find((ex) => ex.id === item.id);
+    if (found) {
+      setSelectedExample(found);
     }
   };
 
@@ -47,7 +53,7 @@ export function HeroSection() {
           {SITE_CONFIG.description}
         </p>
 
-        {/* 4. Ação Principal Centralizada (Sem botão redundante de ver modelos) */}
+        {/* 4. Ação Principal Centralizada (Leva diretamente aos Dados Pessoais) */}
         <div className="mt-5 sm:mt-6 flex justify-center">
           <Link
             href="/editor?mode=simple"
@@ -79,7 +85,7 @@ export function HeroSection() {
         {/* 6. Pílula Sutil de Instrução para o Carrossel */}
         <div className="mt-6 sm:mt-8 inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 bg-white/90 px-3 py-1 rounded-full border border-slate-200 shadow-2xs">
           <MoveHorizontal className="w-3.5 h-3.5 text-blue-800 animate-pulse" />
-          <span>Arraste ou use o scroll horizontal • Clique em qualquer modelo para começar</span>
+          <span>Arraste ou use o scroll horizontal • Clique em qualquer modelo para ver o exemplo</span>
         </div>
 
         {/* 7. Vitrine ArcFlowCarousel Integrada no Topo (Sem colisão com Navbar) */}
@@ -101,37 +107,13 @@ export function HeroSection() {
             className="rounded-2xl"
           />
         </div>
-
-        {/* 8. Grade de Acesso Rápido aos 4 Modelos Validados (Abaixo do Carrossel) */}
-        <div className="mt-4 sm:mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-left">
-          {AVAILABLE_LAYOUTS.map((layout) => (
-            <div
-              key={layout.id}
-              className="p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between"
-            >
-              <div>
-                <span className="inline-block text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-900 mb-1.5 border border-blue-100">
-                  {layout.badge}
-                </span>
-                <h3 className="font-bold text-slate-900 text-xs sm:text-sm">{layout.name}</h3>
-                <p className="mt-1 text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
-                  {layout.description}
-                </p>
-              </div>
-
-              <div className="mt-3 pt-2.5 border-t border-slate-100">
-                <Link
-                  href={`/editor?layout=${layout.id}&mode=simple`}
-                  className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-2.5 text-[11px] font-bold text-blue-900 hover:text-white bg-blue-50/80 hover:bg-blue-900 rounded-lg transition-colors"
-                >
-                  <span>Usar modelo</span>
-                  <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
+
+      {/* Modal/Popover Compacto de Visualização (Sem tela cheia) */}
+      <CompactExampleModal
+        example={selectedExample}
+        onClose={() => setSelectedExample(null)}
+      />
     </section>
   );
 }

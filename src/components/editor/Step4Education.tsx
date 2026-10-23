@@ -12,7 +12,7 @@ interface Step4Props {
   onPrev: () => void;
 }
 
-export function Step4Education({ education, mode = "simple", onChange, onNext, onPrev }: Step4Props) {
+export function Step4Education({ education, onChange, onNext, onPrev }: Step4Props) {
   const addEducation = () => {
     const newEdu: EducationItem = {
       id: `edu-${Date.now()}`,
@@ -30,7 +30,11 @@ export function Step4Education({ education, mode = "simple", onChange, onNext, o
     onChange(education.filter((e) => e.id !== id));
   };
 
-  const updateEducation = (id: string, field: keyof EducationItem, value: any) => {
+  const updateEducation = <K extends keyof EducationItem>(
+    id: string,
+    field: K,
+    value: EducationItem[K]
+  ) => {
     onChange(
       education.map((edu) => (edu.id === id ? { ...edu, [field]: value } : edu))
     );
@@ -99,10 +103,11 @@ export function Step4Education({ education, mode = "simple", onChange, onNext, o
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Curso */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor={`edu-course-${edu.id}`} className="block text-xs font-bold text-slate-700 mb-1">
                     Curso / Formação <span className="text-rose-600">*</span>
                   </label>
                   <input
+                    id={`edu-course-${edu.id}`}
                     type="text"
                     required
                     value={edu.course}
@@ -114,10 +119,11 @@ export function Step4Education({ education, mode = "simple", onChange, onNext, o
 
                 {/* Instituição */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor={`edu-institution-${edu.id}`} className="block text-xs font-bold text-slate-700 mb-1">
                     Instituição de Ensino <span className="text-rose-600">*</span>
                   </label>
                   <input
+                    id={`edu-institution-${edu.id}`}
                     type="text"
                     required
                     value={edu.institution}
@@ -129,10 +135,11 @@ export function Step4Education({ education, mode = "simple", onChange, onNext, o
 
                 {/* Grau / Modalidade */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor={`edu-degree-${edu.id}`} className="block text-xs font-bold text-slate-700 mb-1">
                     Grau / Modalidade
                   </label>
                   <select
+                    id={`edu-degree-${edu.id}`}
                     value={edu.degree}
                     onChange={(e) => updateEducation(edu.id, "degree", e.target.value)}
                     className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 text-slate-900"
@@ -150,10 +157,11 @@ export function Step4Education({ education, mode = "simple", onChange, onNext, o
 
                 {/* Situação */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor={`edu-status-${edu.id}`} className="block text-xs font-bold text-slate-700 mb-1">
                     Situação Atual
                   </label>
                   <select
+                    id={`edu-status-${edu.id}`}
                     value={edu.status}
                     onChange={(e) => updateEducation(edu.id, "status", e.target.value as EducationStatus)}
                     className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 text-slate-900"
@@ -166,10 +174,11 @@ export function Step4Education({ education, mode = "simple", onChange, onNext, o
 
                 {/* Data Início */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor={`edu-startDate-${edu.id}`} className="block text-xs font-bold text-slate-700 mb-1">
                     Ano / Data de Início
                   </label>
                   <input
+                    id={`edu-startDate-${edu.id}`}
                     type="text"
                     value={edu.startDate}
                     onChange={(e) => updateEducation(edu.id, "startDate", e.target.value)}
@@ -180,10 +189,11 @@ export function Step4Education({ education, mode = "simple", onChange, onNext, o
 
                 {/* Data Fim */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor={`edu-endDate-${edu.id}`} className="block text-xs font-bold text-slate-700 mb-1">
                     Previsão ou Ano de Conclusão
                   </label>
                   <input
+                    id={`edu-endDate-${edu.id}`}
                     type="text"
                     value={edu.endDate}
                     onChange={(e) => updateEducation(edu.id, "endDate", e.target.value)}

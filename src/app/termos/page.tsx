@@ -1,9 +1,13 @@
-"use client";
-
 import React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, FileText, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
+
+export const metadata: Metadata = {
+  title: `Termos de Uso do Serviço | ${SITE_CONFIG.name}`,
+  description: `Termos de uso e condições comerciais do ${SITE_CONFIG.name}. Preço fixo de ${SITE_CONFIG.pricing.formatted} por currículo gerado sem recorrência.`,
+};
 
 export default function TermosPage() {
   return (

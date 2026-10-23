@@ -16,7 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: `${SITE_CONFIG.name} | Criador Rápido de Currículos Profissionais — R$ 0,50 por currículo`,
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://fastcurriculo.com.br"),
+  title: `${SITE_CONFIG.name} | Criador Rápido de Currículos Profissionais — ${SITE_CONFIG.pricing.formatted} por currículo`,
   description: SITE_CONFIG.description,
   keywords: [
     "fastcurrículo",
@@ -37,6 +38,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { EditorProvider } from "@/context/EditorContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -45,9 +48,11 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 selection:bg-blue-100 selection:text-blue-900">
-        <Navbar />
-        <main className="flex-1 flex flex-col">{children}</main>
-        <Footer />
+        <EditorProvider>
+          <Navbar />
+          <main className="flex-1 flex flex-col">{children}</main>
+          <Footer />
+        </EditorProvider>
       </body>
     </html>
   );

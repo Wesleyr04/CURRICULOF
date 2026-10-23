@@ -3,8 +3,8 @@ export const SITE_CONFIG = {
   tagline: "Seu próximo currículo começa aqui.",
   description: "Organize suas informações, escolha um modelo e tenha seu currículo pronto para baixar. Sem cadastro e sem armazenar seus dados pessoais.",
   pricing: {
-    amountInCents: 50,
-    formatted: "R$ 0,50",
+    amountInCents: 500,
+    formatted: "R$ 5,00",
     period: "pagamento único",
     description: "por currículo gerado",
   },
@@ -31,13 +31,13 @@ export const SITE_CONFIG = {
       icon: "Zap",
     },
     {
-      title: "4 Modelos Validados por RH",
-      description: "Modelos clássicos para ATS, jovem aprendiz, modernos com sidebar e linhas corporativas.",
+      title: "5 Modelos Validados por RH",
+      description: "Modelos clássicos para ATS, jovem aprendiz, modernos com sidebar, linhas corporativas e especialista tech.",
       icon: "FileSpreadsheet",
     },
     {
-      title: "Preço único de R$ 0,50",
-      description: "Apenas R$ 0,50 por currículo via Pix. Sem assinaturas surpresa ou planos recorrentes.",
+      title: "Preço único de R$ 5,00",
+      description: "Apenas R$ 5,00 por currículo via Pix. Sem assinaturas surpresa ou planos recorrentes.",
       icon: "Coins",
     },
     {
@@ -55,17 +55,17 @@ export const SITE_CONFIG = {
     {
       step: 2,
       title: "Escolha seu modelo",
-      description: "Escolha um dos 4 modelos profissionais e ajuste cores e fontes em tempo real.",
+      description: "Escolha um dos 5 modelos profissionais e ajuste cores e fontes em tempo real.",
     },
     {
       step: 3,
       title: "Baixe seu currículo",
-      description: "Visualize o resultado em tempo real e exporte seu currículo profissional por apenas R$ 0,50.",
+      description: "Visualize o resultado em tempo real e exporte seu currículo profissional por apenas R$ 5,00.",
     },
   ],
   faqs: [
     {
-      question: "Por que apenas R$ 0,50?",
+      question: "Por que apenas R$ 5,00?",
       answer: "Acreditamos que buscar emprego não deve ser um processo caro. Nosso sistema não tem custos desnecessários com servidores de banco de dados e contas de usuários, permitindo oferecer um valor acessível e justo para todos.",
     },
     {
@@ -86,7 +86,7 @@ export const SITE_CONFIG = {
     },
     {
       question: "Como funciona o pagamento?",
-      answer: "O pagamento é feito por Pix no valor exato de R$ 0,50. Assim que a transação é confirmada, o download do PDF é liberado instantaneamente.",
+      answer: "O pagamento é feito por Pix no valor exato de R$ 5,00. Assim que a transação é confirmada, o download do PDF é liberado instantaneamente.",
     },
   ],
 };

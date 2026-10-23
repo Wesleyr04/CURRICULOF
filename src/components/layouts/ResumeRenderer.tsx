@@ -7,14 +7,17 @@ import { ModernLayout } from "./ModernLayout";
 import { MinimalistLayout } from "./MinimalistLayout";
 import { FirstJobLayout } from "./FirstJobLayout";
 import { TechSpecialistLayout } from "./TechSpecialistLayout";
+import { isAiRefusal } from "@/lib/security/content-guard";
+import { resolveLayoutId } from "@/config/layouts";
 
 interface ResumeRendererProps {
   data: ResumeData;
   isPdfView?: boolean;
+  rootId?: string;
 }
 
-export function ResumeRenderer({ data, isPdfView = false }: ResumeRendererProps) {
-  const layoutId = data.customization.layoutId || "classic-ats";
+export function ResumeRenderer({ data, isPdfView = false, rootId }: ResumeRendererProps) {
+  const layoutId = resolveLayoutId(data.customization?.layoutId) || "classic-ats";
   const fontFamily = data.customization.fontFamily || "sans";
 
   const fontClass =
@@ -30,25 +33,36 @@ export function ResumeRenderer({ data, isPdfView = false }: ResumeRendererProps)
     mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
   };
 
+  // Sanitização estrita: jamais renderiza mensagens de recusa de IA como objetivo/resumo no A4
+  const safeSummary = isAiRefusal(data.target.summary) ? "" : data.target.summary;
+  const safeData: ResumeData = {
+    ...data,
+    target: {
+      ...data.target,
+      summary: safeSummary,
+    },
+  };
+
   const renderSelectedLayout = () => {
     switch (layoutId) {
       case "classic-ats":
-        return <ClassicAtsLayout data={data} isPdfView={isPdfView} />;
+        return <ClassicAtsLayout data={safeData} isPdfView={isPdfView} />;
       case "modern":
-        return <ModernLayout data={data} isPdfView={isPdfView} />;
+        return <ModernLayout data={safeData} isPdfView={isPdfView} />;
       case "minimalist":
+        return <MinimalistLayout data={safeData} isPdfView={isPdfView} />;
       case "tech-specialist":
-        return <MinimalistLayout data={data} isPdfView={isPdfView} />;
+        return <TechSpecialistLayout data={safeData} isPdfView={isPdfView} />;
       case "first-job":
-        return <FirstJobLayout data={data} isPdfView={isPdfView} />;
+        return <FirstJobLayout data={safeData} isPdfView={isPdfView} />;
       default:
-        return <FirstJobLayout data={data} isPdfView={isPdfView} />;
+        return <ClassicAtsLayout data={safeData} isPdfView={isPdfView} />;
     }
   };
 
   return (
     <div
-      id="resume-document-root"
+      id={rootId ?? "resume-document-root"}
       className={`resume-a4-sheet bg-white text-slate-900 shadow-lg mx-auto print:shadow-none print:m-0 print:w-full ${fontClass}`}
       style={{
         width: "100%",
@@ -56,6 +70,8 @@ export function ResumeRenderer({ data, isPdfView = false }: ResumeRendererProps)
         minHeight: isPdfView ? "297mm" : "auto",
         boxSizing: "border-box",
         fontFamily: fontStyleMap[fontFamily] || fontStyleMap.sans,
+        WebkitPrintColorAdjust: "exact",
+        printColorAdjust: "exact",
       }}
     >
       {renderSelectedLayout()}

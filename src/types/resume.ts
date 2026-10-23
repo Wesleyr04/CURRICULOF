@@ -16,6 +16,8 @@ export type LanguageLevel =
   | "Fluente"
   | "Nativo";
 
+export type CareerStage = "experienced" | "entry_level" | "career_transition";
+
 export interface PersonalInfo {
   fullName: string;
   email: string;
@@ -29,7 +31,9 @@ export interface PersonalInfo {
 
 export interface TargetInfo {
   jobTitle: string;
-  field: string;
+  field?: string;
+  careerStage?: CareerStage;
+  careerContext?: string;
   summary: string;
 }
 

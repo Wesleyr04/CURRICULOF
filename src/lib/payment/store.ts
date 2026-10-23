@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { PaymentStatus } from "./types";
+export { FIXED_PRICE_IN_CENTS } from "./factory";
 
 export interface EphemeralOrder {
   orderId: string;
@@ -63,9 +64,25 @@ class EphemeralOrderStore {
     return undefined;
   }
 
-  markAsPaid(orderId: string): { order: EphemeralOrder; downloadToken: string } | null {
-    const order = this.orders.get(orderId);
-    if (!order) return null;
+  syncApprovedOrder(
+    paymentId: string,
+    amountInCents: number = 500
+  ): { order: EphemeralOrder; downloadToken: string } {
+    let order = this.orders.get(paymentId) || this.getOrderByPaymentId(paymentId);
+    if (!order) {
+      const orderId = `ord_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+      const now = Date.now();
+      order = {
+        orderId,
+        paymentId,
+        amountInCents,
+        status: "paid",
+        paidAt: now,
+        createdAt: now,
+        expiresAt: now + 24 * 60 * 60 * 1000, // 24h para re-download no mesmo dia
+      };
+      this.orders.set(orderId, order);
+    }
 
     if (order.status === "paid" && order.downloadToken) {
       return { order, downloadToken: order.downloadToken };
@@ -75,8 +92,31 @@ class EphemeralOrderStore {
     order.status = "paid";
     order.paidAt = Date.now();
     order.downloadToken = downloadToken;
-    // Permite download por 30 minutos após o pagamento
-    order.expiresAt = Date.now() + 30 * 60 * 1000;
+    order.expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+
+    return { order, downloadToken };
+  }
+
+  markAsPaid(orderId: string): { order: EphemeralOrder; downloadToken: string } | null {
+    let order = this.orders.get(orderId);
+    if (!order) {
+      order = this.getOrderByPaymentId(orderId);
+    }
+    if (!order) {
+      // Fallback serverless: se não existia na instância atual, sincroniza diretamente
+      return this.syncApprovedOrder(orderId);
+    }
+
+    if (order.status === "paid" && order.downloadToken) {
+      return { order, downloadToken: order.downloadToken };
+    }
+
+    const downloadToken = `dl_${crypto.randomBytes(24).toString("hex")}`;
+    order.status = "paid";
+    order.paidAt = Date.now();
+    order.downloadToken = downloadToken;
+    // Permite download por 24 horas após o pagamento para garantir re-download seguro
+    order.expiresAt = Date.now() + 24 * 60 * 60 * 1000;
 
     return { order, downloadToken };
   }

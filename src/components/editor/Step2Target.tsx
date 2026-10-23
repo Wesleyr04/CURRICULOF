@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { TargetInfo, ResumeData, CreationMode } from "@/types/resume";
-import { Sparkles, Loader2, ArrowLeft, ArrowRight, Lightbulb } from "lucide-react";
+import { TargetInfo, ResumeData, CreationMode, CareerStage } from "@/types/resume";
+import { ArrowLeft, ArrowRight, Lightbulb, AlertTriangle, Briefcase, GraduationCap, RefreshCw, CheckCircle2 } from "lucide-react";
+import { validateContentSafety } from "@/lib/security/content-guard";
 
 interface Step2Props {
   data: TargetInfo;
@@ -13,177 +14,198 @@ interface Step2Props {
   onPrev: () => void;
 }
 
-export function Step2Target({ data, fullData, mode = "simple", onChange, onNext, onPrev }: Step2Props) {
-  const [loadingAi, setLoadingAi] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
+const CAREER_STAGE_OPTIONS: Array<{
+  id: CareerStage;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
+  {
+    id: "experienced",
+    label: "Já atuo / tenho experiência nesta área",
+    description: "O Fast vai destacar seu domínio técnico, ferramentas, resultados e maturidade profissional.",
+    icon: Briefcase,
+  },
+  {
+    id: "entry_level",
+    label: "Buscando primeiro emprego / estágio nesta área",
+    description: "O Fast vai destacar sua iniciativa, facilidade de aprendizado e base educacional/cursos.",
+    icon: GraduationCap,
+  },
+  {
+    id: "career_transition",
+    label: "Estou em transição de carreira (vim de outra área)",
+    description: "O Fast vai extrair habilidades transferíveis das suas experiências anteriores para o novo cargo.",
+    icon: RefreshCw,
+  },
+];
 
-  const activeMode = fullData.creationMode || mode;
+export function Step2Target({ data, onChange, onNext, onPrev }: Step2Props) {
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const updateField = (field: keyof TargetInfo, value: string) => {
+  const selectedCareerStage: CareerStage = data.careerStage || "experienced";
+
+  const updateField = <K extends keyof TargetInfo>(field: K, value: TargetInfo[K]) => {
+    setFormError(null);
     onChange({ ...data, [field]: value });
-  };
-
-  const handleRequestAiSuggestion = async () => {
-    if (!data.jobTitle.trim() || !data.field.trim()) {
-      alert("Por favor, preencha o Cargo Desejado e a Área Profissional antes de solicitar a sugestão do Fast.");
-      return;
-    }
-
-    setLoadingAi(true);
-    setAiError(null);
-
-    try {
-      const res = await fetch("/api/ai/suggest-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jobTitle: data.jobTitle,
-          field: data.field,
-          mode: activeMode,
-          experiences: fullData.experiences.map((e) => ({
-            role: e.role,
-            company: e.company,
-            description: e.description,
-          })),
-          skills: fullData.technicalSkills,
-          education: fullData.education.map((ed) => ({
-            course: ed.course,
-            institution: ed.institution,
-          })),
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Falha ao comunicar com o serviço Fast.");
-      }
-
-      const result = await res.json();
-      if (result.summary) {
-        updateField("summary", result.summary);
-      }
-    } catch (err: any) {
-      setAiError(err?.message || "Não foi possível gerar a sugestão do Fast no momento.");
-    } finally {
-      setLoadingAi(false);
-    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!data.jobTitle.trim() || !data.field.trim()) {
-      alert("Preencha o cargo desejado e a área profissional para continuar.");
+    setFormError(null);
+
+    const cleanJob = data.jobTitle.trim();
+
+    if (!cleanJob) {
+      setFormError("Informe o cargo ou área que você está buscando agora.");
       return;
     }
+
+    // Camada de Validação Estrita de Conteúdo (Custo Zero de Tokens)
+    const checkJob = validateContentSafety(cleanJob);
+    if (!checkJob.allowed) {
+      setFormError(`Cargo pretendido inválido: ${checkJob.reason}`);
+      return;
+    }
+
+    if (data.careerContext && data.careerContext.trim()) {
+      const checkContext = validateContentSafety(data.careerContext.trim());
+      if (!checkContext.allowed) {
+        setFormError(`Contexto informado inválido: ${checkContext.reason}`);
+        return;
+      }
+    }
+
+    // Garante que field esteja preenchido por compatibilidade
+    if (!data.field || !data.field.trim()) {
+      onChange({ ...data, field: cleanJob, careerStage: selectedCareerStage });
+    }
+
     onNext();
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Cabeçalho */}
       <div>
         <h2 className="text-xl font-bold text-slate-900">Etapa 2 — Cargo Pretendido & Objetivo</h2>
         <p className="text-xs text-slate-500 mt-1">
-          Defina o foco da sua candidatura. O resumo profissional é opcional: se você preferir não preencher, o FastCurrículo ajusta a estrutura para valorizar suas qualificações.
+          Defina o foco da sua candidatura. Essas informações guiam o alinhamento de todo o seu currículo e o direcionamento do Fast.
         </p>
       </div>
 
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Cargo Desejado */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
-            Cargo Pretendido <span className="text-rose-600">*</span>
-          </label>
-          <input
-            type="text"
-            required
-            value={data.jobTitle}
-            onChange={(e) => updateField("jobTitle", e.target.value)}
-            placeholder="Ex: Analista Financeiro Júnior"
-            className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 text-slate-900"
-          />
-        </div>
-
-        {/* Área Profissional */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
-            Área de Atuação <span className="text-rose-600">*</span>
-          </label>
-          <input
-            type="text"
-            required
-            value={data.field}
-            onChange={(e) => updateField("field", e.target.value)}
-            placeholder="Ex: Controladoria & Finanças"
-            className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 text-slate-900"
-          />
-        </div>
-      </div>
-
-      {/* Resumo ou Objetivo Profissional */}
+      {/* 1. Cargo / Vaga Desejada (Objetivo) */}
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
-          <label className="block text-xs font-bold text-slate-700">
-            Resumo / Perfil Profissional{" "}
-            {activeMode === "simple" ? (
-              <span className="text-slate-400 font-normal">(Opcional no Modo Simples)</span>
-            ) : (
-              <span className="text-slate-400 font-normal">(Recomendado)</span>
-            )}
-          </label>
-          {/* Botão de Sugestão Fast */}
-          <button
-            type="button"
-            disabled={loadingAi}
-            onClick={handleRequestAiSuggestion}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-md bg-blue-50 text-blue-900 hover:bg-blue-100 border border-blue-200 transition-colors disabled:opacity-50"
-          >
-            {loadingAi ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-700" />
-                <span>Fast gerando síntese objetiva...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-3.5 h-3.5 text-blue-700" />
-                <span>Sugestão do Fast</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        <textarea
-          rows={activeMode === "simple" ? 3 : 5}
-          value={data.summary}
-          onChange={(e) => updateField("summary", e.target.value)}
-          placeholder={
-            activeMode === "simple"
-              ? "Ex: Profissional focado em suporte técnico com vivência em atendimento e sustentação de sistemas. (Ou use 'Sugestão do Fast' para resumo direto)"
-              : "Escreva brevemente seu perfil ou clique em 'Sugestão do Fast' para estruturar uma apresentação focada sem inventar fatos..."
-          }
-          className="w-full p-3 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 text-slate-900 leading-relaxed"
+        <label htmlFor="targetJobTitle" className="block text-xs font-bold text-slate-700 mb-1">
+          Qual cargo ou área você está buscando agora? <span className="text-rose-600">*</span>
+        </label>
+        <input
+          id="targetJobTitle"
+          type="text"
+          required
+          aria-required="true"
+          aria-invalid={Boolean(formError)}
+          aria-describedby={formError ? "target-error" : undefined}
+          value={data.jobTitle}
+          onChange={(e) => updateField("jobTitle", e.target.value)}
+          placeholder="Ex: Analista Financeiro Júnior, Desenvolvedor React, Vendedor"
+          className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-800 text-slate-900 shadow-2xs"
         />
+        <p className="mt-1 text-[11px] text-slate-500">
+          Esse título aparecerá no topo do seu currículo como seu objetivo profissional.
+        </p>
+      </div>
 
-        {aiError && (
-          <p className="mt-1.5 text-xs text-rose-600 font-medium">
-            {aiError}
-          </p>
-        )}
+      {/* 2. Momento de Carreira neste Cargo */}
+      <div>
+        <label className="block text-xs font-bold text-slate-700 mb-2">
+          Seu momento de carreira neste cargo: <span className="text-rose-600">*</span>
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          {CAREER_STAGE_OPTIONS.map((option) => {
+            const isSelected = selectedCareerStage === option.id;
+            const IconComponent = option.icon;
 
-        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
-          <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-          <span>
-            {activeMode === "simple"
-              ? "Modo Simples ativo: o Fast produz sínteses curtas e diretas, sem adjetivos vazios."
-              : "Modo Completo ativo: apresentação estruturada detalhadamente com base nas suas informações."}
-          </span>
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => updateField("careerStage", option.id)}
+                className={`p-3 text-left rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                  isSelected
+                    ? "border-blue-900 bg-blue-50/60 ring-2 ring-blue-900/20 shadow-xs"
+                    : "border-slate-200 hover:border-slate-300 bg-white"
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className={`p-1.5 rounded-lg ${isSelected ? "bg-blue-900 text-white" : "bg-slate-100 text-slate-700"}`}>
+                      <IconComponent className="w-3.5 h-3.5" />
+                    </div>
+                    {isSelected && <CheckCircle2 className="w-4 h-4 text-blue-900" />}
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 leading-snug">
+                    {option.label}
+                  </h4>
+                  <p className="mt-1 text-[10px] text-slate-600 leading-relaxed">
+                    {option.description}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
+      {/* 3. Como o Fast vai usar isso & Contexto Adicional (Gasto ZERO de tokens nesta etapa) */}
+      <div className="space-y-3">
+        {/* Card Informativo: O Fast vai usar isso para: */}
+        <div className="p-3.5 bg-blue-50/60 border border-blue-200 rounded-xl flex items-start gap-2.5 text-blue-950 text-xs">
+          <Lightbulb className="w-4 h-4 text-blue-800 shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <span className="font-bold text-blue-900 block mb-0.5">O Fast vai usar isso para:</span>
+            Adaptar a apresentação do seu perfil e destacar suas experiências anteriores em total alinhamento com o cargo que você busca. A seção <strong>Sobre você</strong> oficial será gerada na <strong>Etapa 6</strong>, conectando com precisão todo o histórico que você preencherá a seguir.
+          </div>
+        </div>
+
+        {/* Input: Contexto ou foco adicional para o Fast (Opcional) */}
+        <div>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <label htmlFor="targetCareerContext" className="block text-xs font-bold text-slate-700">
+              Contexto adicional para o Fast <span className="text-slate-400 font-normal">(Opcional)</span>
+            </label>
+            <span className="text-[10px] text-slate-400">
+              {(data.careerContext || "").length}/500
+            </span>
+          </div>
+          <textarea
+            id="targetCareerContext"
+            rows={3}
+            maxLength={500}
+            value={data.careerContext || ""}
+            onChange={(e) => updateField("careerContext", e.target.value)}
+            placeholder="Ex: Foco em gestão de projetos remotos; transição vindo de vendas para desenvolvimento front-end; ênfase em processos de qualidade e segurança."
+            className="w-full p-3 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-800 text-slate-900 leading-relaxed shadow-2xs"
+          />
+          <p className="mt-1 text-[11px] text-slate-500">
+            Destaque qualquer nuance que queira que o Fast considere ao estruturar sua apresentação e refinar suas atividades na etapa final.
+          </p>
+        </div>
+      </div>
+
+      {formError && (
+        <div id="target-error" role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2 text-rose-800 text-xs">
+          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <span>{formError}</span>
+        </div>
+      )}
+
+      {/* Navegação */}
       <div className="pt-4 flex justify-between items-center">
         <button
           type="button"
           onClick={onPrev}
-          className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors flex items-center gap-1"
+          className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors flex items-center gap-1 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Voltar para Dados Pessoais</span>
@@ -191,7 +213,7 @@ export function Step2Target({ data, fullData, mode = "simple", onChange, onNext,
 
         <button
           type="submit"
-          className="px-6 py-2.5 text-sm font-bold text-white bg-blue-900 hover:bg-blue-800 rounded-lg shadow-xs transition-all flex items-center gap-1"
+          className="px-6 py-2.5 text-sm font-bold text-white bg-blue-900 hover:bg-blue-800 rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer"
         >
           <span>Avançar para Experiências</span>
           <ArrowRight className="w-4 h-4" />

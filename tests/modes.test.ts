@@ -64,7 +64,7 @@ describe("Modos de Criação — Simples vs Completo", () => {
           endDate: "2024-05",
           current: false,
           description: "Atividades completas e liderança de projetos",
-          achievements: ["Aumento de 20% na retenção de clientes", "Migração de arquitetura legacy"],
+          achievements: "Aumento de 20% na retenção de clientes. Migração de arquitetura legacy.",
         },
       ],
     };
@@ -79,7 +79,7 @@ describe("Modos de Criação — Simples vs Completo", () => {
     expect(state.creationMode).toBe("simple");
     expect(state.certifications).toHaveLength(2);
     expect(state.languages).toHaveLength(2);
-    expect(state.experiences[0].achievements).toHaveLength(2);
+    expect(state.experiences[0].achievements).toContain("Aumento de 20%");
 
     // Reverte para o Modo Completo
     state = {
@@ -90,7 +90,7 @@ describe("Modos de Criação — Simples vs Completo", () => {
     expect(state.creationMode).toBe("complete");
     expect(state.certifications[0]).toBe("Certificação AWS Solutions Architect");
     expect(state.languages[0].name).toBe("Inglês");
-    expect(state.experiences[0].achievements?.[0]).toBe("Aumento de 20% na retenção de clientes");
+    expect(state.experiences[0].achievements).toContain("Aumento de 20% na retenção de clientes");
   });
 
   it("IA deve diferenciar saídas entre Modo Simples (enxuto) e Modo Completo (detalhado)", async () => {

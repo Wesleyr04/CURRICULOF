@@ -1,21 +1,35 @@
 "use client";
 
 import React, { useState } from "react";
-import { ExperienceItem, CreationMode } from "@/types/resume";
-import { Plus, Trash2, Sparkles, Loader2, ArrowLeft, ArrowRight, Briefcase } from "lucide-react";
+import { ExperienceItem, CreationMode, CareerStage } from "@/types/resume";
+import { Plus, Trash2, Sparkles, Loader2, ArrowLeft, ArrowRight, Briefcase, AlertCircle } from "lucide-react";
 
 interface Step3Props {
   experiences: ExperienceItem[];
   jobTitle?: string;
+  careerStage?: CareerStage;
+  careerContext?: string;
   mode?: CreationMode;
   onChange: (experiences: ExperienceItem[]) => void;
   onNext: () => void;
   onPrev: () => void;
 }
 
-export function Step3Experience({ experiences, jobTitle, mode = "simple", onChange, onNext, onPrev }: Step3Props) {
+export function Step3Experience({
+  experiences,
+  jobTitle,
+  careerStage,
+  careerContext,
+  mode = "simple",
+  onChange,
+  onNext,
+  onPrev,
+}: Step3Props) {
   const [loadingAiId, setLoadingAiId] = useState<string | null>(null);
   const [showAchievementsMap, setShowAchievementsMap] = useState<Record<string, boolean>>({});
+  const [aiFeedbackMap, setAiFeedbackMap] = useState<
+    Record<string, { type: "error" | "info"; message: string }>
+  >({});
 
   const addExperience = () => {
     const newExp: ExperienceItem = {
@@ -33,9 +47,25 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
 
   const removeExperience = (id: string) => {
     onChange(experiences.filter((e) => e.id !== id));
+    setAiFeedbackMap((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
-  const updateExperience = (id: string, field: keyof ExperienceItem, value: any) => {
+  const updateExperience = <K extends keyof ExperienceItem>(
+    id: string,
+    field: K,
+    value: ExperienceItem[K]
+  ) => {
+    if (field === "description" && aiFeedbackMap[id]) {
+      setAiFeedbackMap((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
     onChange(
       experiences.map((exp) => {
         if (exp.id === id) {
@@ -52,11 +82,22 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
 
   const handleImproveWithAi = async (exp: ExperienceItem) => {
     if (!exp.description.trim()) {
-      alert("Escreva ao menos algumas palavras sobre suas atividades para o Fast aprimorar.");
+      setAiFeedbackMap((prev) => ({
+        ...prev,
+        [exp.id]: {
+          type: "error",
+          message: "Escreva ao menos algumas palavras sobre suas atividades para o Fast aprimorar.",
+        },
+      }));
       return;
     }
 
     setLoadingAiId(exp.id);
+    setAiFeedbackMap((prev) => {
+      const next = { ...prev };
+      delete next[exp.id];
+      return next;
+    });
 
     try {
       const res = await fetch("/api/ai/improve-text", {
@@ -66,6 +107,10 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
           rawText: exp.description,
           context: "experience",
           jobTitle: exp.role || jobTitle,
+          careerStage,
+          careerContext,
+          company: exp.company,
+          achievements: exp.achievements,
           mode,
         }),
       });
@@ -77,7 +122,13 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
         updateExperience(exp.id, "description", result.improvedText);
       }
     } catch {
-      alert("Não foi possível aprimorar o texto no momento. Tente novamente.");
+      setAiFeedbackMap((prev) => ({
+        ...prev,
+        [exp.id]: {
+          type: "error",
+          message: "Não foi possível aprimorar o texto no momento. Tente novamente.",
+        },
+      }));
     } finally {
       setLoadingAiId(null);
     }
@@ -162,10 +213,11 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                    <label htmlFor={`exp-company-${exp.id}`} className="block text-xs font-bold text-slate-700 mb-1">
                       Empresa <span className="text-rose-600">*</span>
                     </label>
                     <input
+                      id={`exp-company-${exp.id}`}
                       type="text"
                       required
                       value={exp.company}
@@ -176,10 +228,11 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                    <label htmlFor={`exp-role-${exp.id}`} className="block text-xs font-bold text-slate-700 mb-1">
                       Cargo / Função <span className="text-rose-600">*</span>
                     </label>
                     <input
+                      id={`exp-role-${exp.id}`}
                       type="text"
                       required
                       value={exp.role}
@@ -190,10 +243,11 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                    <label htmlFor={`exp-startDate-${exp.id}`} className="block text-xs font-bold text-slate-700 mb-1">
                       Data de Início <span className="text-rose-600">*</span>
                     </label>
                     <input
+                      id={`exp-startDate-${exp.id}`}
                       type="text"
                       value={exp.startDate}
                       onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)}
@@ -204,9 +258,12 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
 
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs font-bold text-slate-700">Data de Término</label>
-                      <label className="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                      <label htmlFor={`exp-endDate-${exp.id}`} className="block text-xs font-bold text-slate-700">
+                        Data de Término
+                      </label>
+                      <label htmlFor={`exp-current-${exp.id}`} className="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
                         <input
+                          id={`exp-current-${exp.id}`}
                           type="checkbox"
                           checked={exp.current}
                           onChange={(e) => updateExperience(exp.id, "current", e.target.checked)}
@@ -216,6 +273,7 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
                       </label>
                     </div>
                     <input
+                      id={`exp-endDate-${exp.id}`}
                       type="text"
                       disabled={exp.current}
                       value={exp.current ? "Presente / Atual" : exp.endDate}
@@ -226,17 +284,29 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
                   </div>
                 </div>
 
+                {/* Banner de feedback de IA inline */}
+                {aiFeedbackMap[exp.id] && (
+                  <div
+                    role="alert"
+                    aria-live="polite"
+                    className="p-2.5 bg-rose-50 border border-rose-300 rounded-lg flex items-center gap-2 text-xs text-rose-900 shadow-2xs animate-in fade-in duration-150"
+                  >
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <span>{aiFeedbackMap[exp.id].message}</span>
+                  </div>
+                )}
+
                 {/* Descrição das Atividades com botão de IA */}
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
+                    <label htmlFor={`exp-description-${exp.id}`} className="block text-xs font-bold text-slate-700">
                       Principais Atividades
                     </label>
                     <button
                       type="button"
                       disabled={loadingAiId === exp.id}
                       onClick={() => handleImproveWithAi(exp)}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-50 text-blue-900 hover:bg-blue-100 border border-blue-200 transition-colors disabled:opacity-50"
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded bg-blue-50 text-blue-900 hover:bg-blue-100 border border-blue-200 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       {loadingAiId === exp.id ? (
                         <>
@@ -252,6 +322,7 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
                     </button>
                   </div>
                   <textarea
+                    id={`exp-description-${exp.id}`}
                     rows={mode === "simple" ? 2 : 3}
                     value={exp.description}
                     onChange={(e) => updateExperience(exp.id, "description", e.target.value)}
@@ -263,10 +334,11 @@ export function Step3Experience({ experiences, jobTitle, mode = "simple", onChan
                 {/* Resultados ou Conquistas (condicional ou expansível no modo simples) */}
                 {isAchievementsVisible ? (
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                    <label htmlFor={`exp-achievements-${exp.id}`} className="block text-xs font-bold text-slate-700 mb-1">
                       Resultados / Conquistas <span className="text-slate-400 font-normal">(Opcional)</span>
                     </label>
                     <input
+                      id={`exp-achievements-${exp.id}`}
                       type="text"
                       value={exp.achievements || ""}
                       onChange={(e) => updateExperience(exp.id, "achievements", e.target.value)}

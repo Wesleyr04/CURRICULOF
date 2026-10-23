@@ -2,7 +2,7 @@ export type PaymentStatus = "pending" | "paid" | "failed" | "expired";
 
 export interface CreatePaymentParams {
   orderId: string;
-  amountInCents: number; // Forçado em 50 pelo servidor
+  amountInCents: number; // Forçado em 500 pelo servidor (R$ 5,00)
   description: string;
 }
 

@@ -10,15 +10,15 @@ interface LayoutProps {
   isPdfView?: boolean;
 }
 
-export function ClassicAtsLayout({ data }: LayoutProps) {
+export function ClassicAtsLayout({ data, isPdfView = false }: LayoutProps) {
   const { personal, target, experiences, education, courses, languages, customization } = data;
 
   const metrics = calculateSmartLayout(data);
   const primaryColor = customization.primaryColor || "#0f172a";
 
-  const isUserProvided = Boolean(personal.fullName?.trim() || personal.email?.trim());
+  const isUserProvided = Boolean(personal.fullName?.trim() || personal.email?.trim() || isPdfView);
 
-  // Fallbacks literais de exemplo baseados na persona Cíntia Campos apenas se não preenchido
+  // Fallbacks literais de exemplo baseados na persona Cíntia Campos apenas se usuário não preencheu dados
   const displayName = personal.fullName?.trim() || (isUserProvided ? "" : "Cíntia Campos");
   const displayJobTitle = target.jobTitle?.trim() || (isUserProvided ? "" : "Vendedora / Atendente Comercial");
   const displayPhone = personal.phone?.trim() || (isUserProvided ? "" : "(11) 97654-3210");
@@ -55,7 +55,7 @@ export function ClassicAtsLayout({ data }: LayoutProps) {
       />
 
       {/* Cabeçalho: Foto/Avatar à Esquerda + Nome e Contatos com Ícones Circulares */}
-      <header className="p-8 sm:p-10 pb-5 flex flex-col sm:flex-row items-center sm:items-start gap-5 border-b border-slate-300">
+      <header className="p-8 sm:p-10 pb-5 flex flex-row items-start gap-5 border-b border-slate-300">
         {personal.photoUrl ? (
           <img
             src={personal.photoUrl}
@@ -79,13 +79,13 @@ export function ClassicAtsLayout({ data }: LayoutProps) {
           </div>
         ) : null}
 
-        <div className="flex-1 text-center sm:text-left space-y-1.5">
+        <div className="flex-1 text-left space-y-1.5">
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight uppercase" style={{ color: primaryColor }}>
             {displayName || "Seu Nome Completo"}
           </h1>
 
           {/* Contatos com Ícones Circulares na cor de destaque ativa */}
-          <div className="flex flex-wrap justify-center sm:justify-start items-center gap-x-4 gap-y-1.5 text-xs text-slate-700 pt-1">
+          <div className="flex flex-wrap justify-start items-center gap-x-4 gap-y-1.5 text-xs text-slate-700 pt-1">
             {displayPhone && (
               <div className="flex items-center gap-1.5">
                 <span

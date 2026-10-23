@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPaymentGateway, FIXED_PRICE_IN_CENTS } from "@/lib/payment/factory";
 import { orderStore } from "@/lib/payment/store";
+import { SITE_CONFIG } from "@/config/site";
 
 export async function POST(_req: NextRequest) {
   try {
     const gateway = getPaymentGateway();
 
-    // Cria a ordem efêmera no servidor com o valor estritamente fixado em 50 centavos
+    // Cria a ordem efêmera no servidor com o valor estritamente fixado em 500 centavos (R$ 5,00)
     const tempPaymentId = `temp_${Date.now()}`;
     const order = orderStore.createOrder(tempPaymentId, FIXED_PRICE_IN_CENTS);
 
@@ -24,7 +25,7 @@ export async function POST(_req: NextRequest) {
         orderId: order.orderId,
         paymentId: result.paymentId,
         amountInCents: FIXED_PRICE_IN_CENTS,
-        formattedAmount: "R$ 0,50",
+        formattedAmount: SITE_CONFIG.pricing.formatted,
         qrCodeText: result.qrCodeText,
         qrCodeBase64: result.qrCodeBase64,
         expiresAt: result.expiresAt,
@@ -37,8 +38,9 @@ export async function POST(_req: NextRequest) {
         },
       }
     );
-  } catch (error: any) {
-    console.error("[Payment Create Error]", error?.message || "Erro desconhecido");
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : "Erro desconhecido";
+    console.error("[Payment Create Error]", errorMsg);
     return NextResponse.json(
       { error: "Não foi possível gerar a cobrança Pix no momento. Tente novamente." },
       { status: 500 }

@@ -19,9 +19,9 @@ describe("Landing Page — Copywriting e Posicionamento", () => {
     expect(SITE_CONFIG.description).not.toContain("deixe a IA ajudar");
   });
 
-  it("deve destacar o modelo comercial de R$ 0,50 pagamento único sem mensalidade", () => {
-    expect(SITE_CONFIG.pricing.amountInCents).toBe(50);
-    expect(SITE_CONFIG.pricing.formatted).toBe("R$ 0,50");
+  it("deve destacar o modelo comercial de R$ 5,00 pagamento único sem mensalidade", () => {
+    expect(SITE_CONFIG.pricing.amountInCents).toBe(500);
+    expect(SITE_CONFIG.pricing.formatted).toBe("R$ 5,00");
     expect(SITE_CONFIG.pricing.period).toBe("pagamento único");
   });
 
@@ -42,10 +42,10 @@ describe("Landing Page — Copywriting e Posicionamento", () => {
     expect(privacyFaq?.answer).not.toContain("privacidade absoluta");
   });
 
-  it("deve mapear os 4 modelos de currículo para navegação na landing page", () => {
+  it("deve mapear os 5 modelos de currículo para navegação na landing page", () => {
     const featureModels = SITE_CONFIG.features.find((f) => f.title.includes("Modelos"));
     expect(featureModels).toBeDefined();
-    expect(featureModels?.title).toContain("4 Modelos");
+    expect(featureModels?.title).toContain("5 Modelos");
   });
 
   it("deve apontar o fluxo primário da landing page para o Modo Simples", () => {

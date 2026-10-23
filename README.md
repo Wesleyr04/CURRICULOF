@@ -1,7 +1,7 @@
 # FastCurrículo — Criador Rápido de Currículos Profissionais
 
 > **Proposta de Valor:** "Você informa seus dados. O Fast organiza suas experiências. Você recebe um currículo profissional pronto para enviar."
-> **Preço Unitário:** R$ 0,50 por currículo via Pix • **Sem cadastro** • **Zero armazenamento permanente de currículos**.
+> **Preço Unitário:** R$ 5,00 por currículo via Pix • **Sem cadastro** • **Zero armazenamento permanente de currículos**.
 
 ---
 
@@ -12,7 +12,7 @@ O **FastCurrículo** é uma plataforma web construída com foco em simplicidade,
 ### Destaques Arquiteturais:
 - **Zero Persistência de Currículos:** Não há banco de dados de currículos, nem cadastro de usuários. As informações permanecem estritamente na memória volátil do navegador do usuário durante a sessão.
 - **Camada de IA Desacoplada (`IAIService`):** Suporta Google Gemini (`gemini-2.5-flash`), OpenAI (`gpt-4o-mini`), e provedor `MockAIService` para testes locais sem custo. A IA é ativada apenas sob demanda e possui restrições estritas contra invenção de dados ou alucinações.
-- **Camada de Pagamento Segura (`IPaymentGateway`):** Preço de R$ 0,50 estritamente fixado no servidor backend. Suporta Asaas Pix, Mercado Pago Pix e MockPix para desenvolvimento e testes automatizados.
+- **Camada de Pagamento Segura (`IPaymentGateway`):** Preço de R$ 5,00 estritamente fixado no servidor backend. Suporta Asaas Pix, Mercado Pago Pix e MockPix para desenvolvimento e testes automatizados.
 - **Exportação Fiel em PDF A4:** Suporte duplo via renderização client-side (`html2canvas` + `jsPDF`) e visualização com regras CSS `@media print` para impressão vetorial direta em folha A4.
 - **5 Layouts Profissionais Distintos:**
   1. **Clássico ATS:** Coluna única, linear, sem elementos gráficos distorcidos, alta compatibilidade com robôs de triagem.
@@ -35,7 +35,7 @@ d:/Projetos/CURRICULOFACIL/
 │   │   │   │   ├── improve-text/route.ts      # Aprimoramento pontual de atividades
 │   │   │   │   └── suggest-summary/route.ts   # Sugestão de resumo profissional fundamentado
 │   │   │   └── payment/
-│   │   │       ├── create/route.ts            # Criação de cobrança Pix de R$ 0,50 fixada no servidor
+│   │   │       ├── create/route.ts            # Criação de cobrança Pix de R$ 5,00 fixada no servidor
 │   │   │       ├── simulate/route.ts          # Simulação de pagamento instantâneo (apenas dev/testes)
 │   │   │       ├── status/route.ts            # Consulta de status e emissão de downloadToken efêmero
 │   │   │       ├── verify-token/route.ts      # Validação de token de download pós-pagamento
@@ -60,7 +60,7 @@ d:/Projetos/CURRICULOFACIL/
 │   │   │   ├── Step4Education.tsx             # Etapa 4: Formação acadêmica
 │   │   │   ├── Step5Skills.tsx                # Etapa 5: Habilidades, cursos, certificações e idiomas
 │   │   │   ├── Step6Review.tsx                # Etapa 6: Revisão, personalização de layout/cores/fontes e IA
-│   │   │   └── PaymentModal.tsx               # Modal de checkout Pix (R$ 0,50), QR code e download do PDF
+│   │   │   └── PaymentModal.tsx               # Modal de checkout Pix (R$ 5,00), QR code e download do PDF
 │   │   ├── landing/
 │   │   │   ├── HeroSection.tsx
 │   │   │   ├── ModelsPreviewSection.tsx
@@ -103,7 +103,7 @@ d:/Projetos/CURRICULOFACIL/
 ├── tests/
 │   ├── ai.test.ts                             # Testes da camada de IA e integridade fatual
 │   ├── layouts.test.ts                        # Testes dos 5 layouts e contratos de dados
-│   ├── payment.test.ts                        # Testes de segurança financeira e preço de R$ 0,50
+│   ├── payment.test.ts                        # Testes de segurança financeira e preço de R$ 1,00
 │   └── schema.test.ts                         # Testes de validação Zod e campos opcionais
 ├── .env.example                               # Modelo de variáveis de ambiente sem credenciais expostas
 ├── package.json
@@ -178,8 +178,8 @@ cp .env.example .env.local
    ```
 3. A aplicação utilizará chamadas diretas REST com baixa temperatura (0.3) e validação dos dados de saída no servidor via Zod.
 
-### Conectar Provedor de Pagamentos (Asaas Pix — Recomendado para R$ 0,50):
-1. O Asaas é o gateway mais economicamente viável para Pix de R$ 0,50 no Brasil, pois permite transferências com taxas fixas reduzidas.
+### Conectar Provedor de Pagamentos (Asaas Pix — Recomendado para R$ 5,00):
+1. O Asaas é o gateway mais economicamente viável para Pix de R$ 5,00 no Brasil, pois permite transferências com taxas fixas reduzidas.
 2. No seu `.env.local`:
    ```env
    PAYMENT_GATEWAY=asaas
@@ -191,15 +191,15 @@ cp .env.example .env.local
 
 ---
 
-## 6. Estimativa de Custos Operacionais (Viabilidade de R$ 0,50)
+## 6. Estimativa de Custos Operacionais (Viabilidade de R$ 5,00)
 
-| Componente | Provedor Selecionado | Custo Estimado por Currículo | Margem com Preço de R$ 0,50 |
+| Componente | Provedor Selecionado | Custo Estimado por Currículo | Margem com Preço de R$ 5,00 |
 |---|---|---|---|
-| **Inteligência Artificial** | Google Gemini 2.5 Flash (~400 tokens) | R$ 0,001 a R$ 0,003 | ~R$ 0,497 |
-| **Gateway Pix** | Asaas Pix (taxa fixa pacote PJ) | R$ 0,15 a R$ 0,25 | ~R$ 0,25 a R$ 0,35 |
+| **Inteligência Artificial** | Google Gemini 2.5 Flash (~400 tokens) | R$ 0,001 a R$ 0,003 | ~R$ 4,70 |
+| **Gateway Pix** | Asaas Pix (taxa fixa pacote PJ) | R$ 0,15 a R$ 0,25 | ~R$ 4,75 a R$ 4,85 |
 | **Infraestrutura Web** | Vercel / Cloudflare Pages / Railway | R$ 0,00 (camada gratuita / serverless) | - |
 | **Banco de Dados** | Nenhum (Arquitetura Zero Persistência) | R$ 0,00 | - |
-| **Resultado Líquido** | — | **Margem de ~50% a 70% por unidade** | **Economicamente sustentável** |
+| **Resultado Líquido** | — | **Margem de ~90% a 95% por unidade** | **Economicamente sustentável** |
 
 ---
 
@@ -226,7 +226,7 @@ Execução realizada através do runner Vitest (`npm test`):
    - Validação de melhoria sintática garantindo maiúsculas e pontuação.
    - Validação de que a IA **não inventa nem altera empresas e cargos originais**.
 4. `tests/payment.test.ts`:
-   - Validação de que o valor unitário no backend é estritamente **50 centavos (R$ 0,50)**.
+   - Validação de que o valor unitário no backend é estritamente **500 centavos (R$ 5,00)**.
    - Validação do ciclo de criação de ordem efêmera em memória volátil.
    - Validação de transição de status para `paid` e emissão do `downloadToken`.
    - Validação de rejeição de token falso e bloqueio de mock em produção.
@@ -241,4 +241,4 @@ Execução realizada através do runner Vitest (`npm test`):
 - [ ] Configurar a URL pública do Webhook no painel do gateway com chave secreta HMAC.
 - [ ] Inserir credencial de IA do servidor (`GEMINI_API_KEY` ou `OPENAI_API_KEY`).
 - [ ] Garantir certificado SSL/HTTPS ativo para toda a aplicação.
-- [ ] Realizar teste de ponta a ponta com pagamento real de R$ 0,50 e conferir o download do PDF.
+- [ ] Realizar teste de ponta a ponta com pagamento real de R$ 5,00 e conferir o download do PDF.

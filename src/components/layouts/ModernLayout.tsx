@@ -11,14 +11,14 @@ interface LayoutProps {
   isPdfView?: boolean;
 }
 
-export function ModernLayout({ data }: LayoutProps) {
+export function ModernLayout({ data, isPdfView = false }: LayoutProps) {
   const { personal, target, experiences, education, courses, technicalSkills, softSkills, languages, customization } = data;
 
   const metrics = calculateSmartLayout(data);
   const primaryColor = customization.primaryColor || "#6E5034";
   const isLight = isColorLight(primaryColor);
 
-  const isUserProvided = Boolean(personal.fullName?.trim() || personal.email?.trim());
+  const isUserProvided = Boolean(personal.fullName?.trim() || personal.email?.trim() || isPdfView);
 
   // Fallbacks de exemplo baseados na persona executiva Juliana Silva apenas se formulário não preenchido
   const displayName = personal.fullName?.trim() || (isUserProvided ? "" : "JULIANA SILVA");
@@ -49,14 +49,14 @@ export function ModernLayout({ data }: LayoutProps) {
 
   return (
     <div
-      className="w-full bg-white text-slate-800 leading-normal flex flex-col md:flex-row min-h-[297mm] select-text"
+      className="w-full bg-white text-slate-800 leading-normal flex flex-row min-h-[297mm] select-text"
       style={{
         fontSize: metrics.fontSizePx,
       }}
     >
       {/* Coluna Lateral Esquerda (~35% da largura): Fundo com cor de destaque ativa */}
       <aside
-        className={`w-full md:w-[35%] p-6 sm:p-7 ${sidebarTextColor} space-y-5 shrink-0 transition-colors`}
+        className={`w-[35%] p-6 sm:p-7 ${sidebarTextColor} space-y-5 shrink-0 transition-colors`}
         style={{ backgroundColor: primaryColor }}
       >
         {/* Topo da sidebar: Foto ou Iniciais estilizadas */}
@@ -184,7 +184,7 @@ export function ModernLayout({ data }: LayoutProps) {
       </aside>
 
       {/* Coluna Principal Direita (~65% da largura): Fundo Branco, Textos Escuros, Títulos na cor ativa */}
-      <main className={`w-full md:w-[65%] p-6 sm:p-8 ${metrics.density === "compact" ? "space-y-4" : "space-y-6"}`}>
+      <main className={`w-[65%] p-6 sm:p-8 shrink-0 flex-1 ${metrics.density === "compact" ? "space-y-4" : "space-y-6"}`}>
         {/* Topo Direito: Nome em CAIXA ALTA grande + Cargo + Linha Curta */}
         <header className="space-y-1 pt-1 pb-2">
           <h1

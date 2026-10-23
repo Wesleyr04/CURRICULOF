@@ -2,6 +2,7 @@ import React from "react";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { StepsSection } from "@/components/landing/StepsSection";
 import { BenefitsSection } from "@/components/landing/BenefitsSection";
+import { ModelsPreviewSection } from "@/components/landing/ModelsPreviewSection";
 import { FaqSection } from "@/components/landing/FaqSection";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, FileText } from "lucide-react";
@@ -19,7 +20,10 @@ export default function HomePage() {
       {/* 3. Benefícios */}
       <BenefitsSection />
 
-      {/* 4. Perguntas Frequentes */}
+      {/* 4. Conheça os Modelos (Vitrine Editorial Fiel ao PDF) */}
+      <ModelsPreviewSection />
+
+      {/* 5. Perguntas Frequentes */}
       <FaqSection />
 
       {/* 5. CTA Final */}

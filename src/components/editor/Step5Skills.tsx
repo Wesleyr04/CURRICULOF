@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { CourseItem, LanguageItem, LanguageLevel, CreationMode } from "@/types/resume";
-import { Plus, Trash2, X, ArrowLeft, ArrowRight, BookOpen, Award, Languages, Cpu, HeartHandshake, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, X, ArrowLeft, ArrowRight, BookOpen, Award, Languages, Cpu, HeartHandshake, ChevronUp } from "lucide-react";
 
 interface Step5Props {
   technicalSkills: string[];
@@ -110,7 +110,11 @@ export function Step5Skills({
     onChangeLanguages([...languages, newLang]);
   };
 
-  const updateLanguage = (id: string, field: keyof LanguageItem, value: any) => {
+  const updateLanguage = <K extends keyof LanguageItem>(
+    id: string,
+    field: K,
+    value: LanguageItem[K]
+  ) => {
     onChangeLanguages(
       languages.map((l) => (l.id === id ? { ...l, [field]: value } : l))
     );
@@ -134,13 +138,16 @@ export function Step5Skills({
       <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-3">
         <div className="flex items-center gap-2">
           <Cpu className="w-4 h-4 text-blue-800" />
-          <h3 className="text-sm font-bold text-slate-900">Competências Técnicas / Ferramentas</h3>
+          <label htmlFor="newTechSkill" className="text-sm font-bold text-slate-900 cursor-pointer">
+            Competências Técnicas / Ferramentas
+          </label>
         </div>
         <p className="text-xs text-slate-500">
           Softwares, linguagens ou métodos que você domina (Ex: Excel Avançado, CRM, Python, Atendimento ao Cliente).
         </p>
         <div className="flex gap-2">
           <input
+            id="newTechSkill"
             type="text"
             value={newTech}
             onChange={(e) => setNewTech(e.target.value)}
@@ -151,7 +158,7 @@ export function Step5Skills({
           <button
             type="button"
             onClick={handleAddTech}
-            className="px-4 py-2 text-xs font-semibold text-white bg-blue-900 hover:bg-blue-800 rounded-lg transition-colors"
+            className="px-4 py-2 text-xs font-semibold text-white bg-blue-900 hover:bg-blue-800 rounded-lg transition-colors cursor-pointer"
           >
             Adicionar
           </button>
@@ -167,7 +174,7 @@ export function Step5Skills({
                 type="button"
                 onClick={() => removeTech(tech)}
                 aria-label={`Remover competência técnica ${tech}`}
-                className="hover:text-rose-600 transition-colors"
+                className="hover:text-rose-600 transition-colors cursor-pointer"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -180,13 +187,16 @@ export function Step5Skills({
       <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-3">
         <div className="flex items-center gap-2">
           <HeartHandshake className="w-4 h-4 text-emerald-700" />
-          <h3 className="text-sm font-bold text-slate-900">Competências Interpessoais (Soft Skills)</h3>
+          <label htmlFor="newSoftSkill" className="text-sm font-bold text-slate-900 cursor-pointer">
+            Competências Interpessoais (Soft Skills)
+          </label>
         </div>
         <p className="text-xs text-slate-500">
           Atitudes e habilidades comportamentais (Ex: Liderança, Comunicação Clara, Resolução de Conflitos, Organização).
         </p>
         <div className="flex gap-2">
           <input
+            id="newSoftSkill"
             type="text"
             value={newSoft}
             onChange={(e) => setNewSoft(e.target.value)}
@@ -197,7 +207,7 @@ export function Step5Skills({
           <button
             type="button"
             onClick={handleAddSoft}
-            className="px-4 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+            className="px-4 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
           >
             Adicionar
           </button>
@@ -250,6 +260,8 @@ export function Step5Skills({
           >
             <div className="md:col-span-2">
               <input
+                id={`course-name-${course.id}`}
+                aria-label="Nome do curso"
                 type="text"
                 value={course.name}
                 onChange={(e) => updateCourse(course.id, "name", e.target.value)}
@@ -259,6 +271,8 @@ export function Step5Skills({
             </div>
             <div>
               <input
+                id={`course-inst-${course.id}`}
+                aria-label="Instituição do curso"
                 type="text"
                 value={course.institution}
                 onChange={(e) => updateCourse(course.id, "institution", e.target.value)}
@@ -268,6 +282,8 @@ export function Step5Skills({
             </div>
             <div className="flex gap-2">
               <input
+                id={`course-hours-${course.id}`}
+                aria-label="Carga horária do curso"
                 type="text"
                 value={course.hours || ""}
                 onChange={(e) => updateCourse(course.id, "hours", e.target.value)}
@@ -292,15 +308,15 @@ export function Step5Skills({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Award className="w-4 h-4 text-amber-600" />
-            <h3 className="text-sm font-bold text-slate-900">
+            <label htmlFor="newCertSkill" className="text-sm font-bold text-slate-900 cursor-pointer">
               Certificações Profissionais {mode === "simple" && "(Opcional)"}
-            </h3>
+            </label>
           </div>
           {mode === "simple" && !showOptionalCerts && certifications.length === 0 && (
             <button
               type="button"
               onClick={() => setShowOptionalCerts(true)}
-              className="text-xs font-semibold text-blue-900 hover:underline inline-flex items-center gap-1"
+              className="text-xs font-semibold text-blue-900 hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Adicionar Certificações</span>
@@ -310,7 +326,7 @@ export function Step5Skills({
             <button
               type="button"
               onClick={() => setShowOptionalCerts(false)}
-              className="text-xs text-slate-500 hover:text-slate-700 inline-flex items-center gap-1"
+              className="text-xs text-slate-500 hover:text-slate-700 inline-flex items-center gap-1 cursor-pointer"
             >
               <ChevronUp className="w-3.5 h-3.5" />
               <span>Recolher</span>
@@ -322,6 +338,8 @@ export function Step5Skills({
           <>
             <div className="flex gap-2">
               <input
+                id="newCertSkill"
+                aria-label="Nova certificação profissional"
                 type="text"
                 value={newCert}
                 onChange={(e) => setNewCert(e.target.value)}
@@ -332,7 +350,7 @@ export function Step5Skills({
               <button
                 type="button"
                 onClick={handleAddCert}
-                className="px-4 py-2 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-600 rounded-lg transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-600 rounded-lg transition-colors cursor-pointer"
               >
                 Adicionar
               </button>
@@ -411,6 +429,8 @@ export function Step5Skills({
                 className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center gap-3 text-xs"
               >
                 <input
+                  id={`lang-name-${lang.id}`}
+                  aria-label="Nome do idioma"
                   type="text"
                   value={lang.name}
                   onChange={(e) => updateLanguage(lang.id, "name", e.target.value)}
@@ -418,6 +438,8 @@ export function Step5Skills({
                   className="flex-1 px-2.5 py-1.5 bg-white border border-slate-300 rounded text-slate-900"
                 />
                 <select
+                  id={`lang-level-${lang.id}`}
+                  aria-label={`Nível de proficiência em ${lang.name || "idioma"}`}
                   value={lang.level}
                   onChange={(e) => updateLanguage(lang.id, "level", e.target.value as LanguageLevel)}
                   className="px-2.5 py-1.5 bg-white border border-slate-300 rounded text-slate-900"

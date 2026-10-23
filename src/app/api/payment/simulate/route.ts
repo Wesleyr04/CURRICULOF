@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
       status: "paid",
       downloadToken: paidResult?.downloadToken,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Erro na simulação" }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : "Erro na simulação";
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }

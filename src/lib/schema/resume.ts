@@ -11,9 +11,13 @@ export const PersonalInfoSchema = z.object({
   photoUrl: z.string().optional(),
 });
 
+export const CareerStageSchema = z.enum(["experienced", "entry_level", "career_transition"]);
+
 export const TargetInfoSchema = z.object({
-  jobTitle: z.string().min(2, "Cargo desejado é obrigatório").max(100),
-  field: z.string().min(2, "Área profissional é obrigatória").max(100),
+  jobTitle: z.string().min(2, "Cargo pretendido é obrigatório").max(100),
+  field: z.string().max(100).optional().default(""),
+  careerStage: CareerStageSchema.optional().default("experienced"),
+  careerContext: z.string().max(500).optional().default(""),
   summary: z.string().max(1200, "Resumo profissional muito extenso").optional().default(""),
 });
 

@@ -3,7 +3,7 @@ import { MockPixGateway } from "./mock-gateway";
 import { AsaasGateway } from "./asaas-gateway";
 import { MercadoPagoGateway } from "./mercadopago-gateway";
 
-export const FIXED_PRICE_IN_CENTS = 50; // R$ 0,50 fixado no servidor
+export const FIXED_PRICE_IN_CENTS = 500; // R$ 5,00 fixado no servidor
 
 // Singleton para o mock gateway compartilhar status durante testes locais
 const sharedMockGateway = new MockPixGateway();

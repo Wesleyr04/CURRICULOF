@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { gsap } from "gsap";
+import { Eye } from "lucide-react";
 
 function usePrefersReducedMotion() {
   return useSyncExternalStore(
@@ -405,12 +406,21 @@ export default function ArcFlowCarousel({
                 boxShadow: "0 18px 40px -12px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.08)",
               }}
             >
+              {/* Badge Superior */}
+              {item.badge && (
+                <div className="absolute top-2.5 left-2.5 z-20 pointer-events-none">
+                  <span className="inline-block rounded-full bg-slate-900/85 text-white px-2.5 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wide uppercase backdrop-blur-md shadow-xs border border-white/20">
+                    {item.badge}
+                  </span>
+                </div>
+              )}
+
+              {/* Prévia Limpa do Currículo */}
               {item.previewNode ? (
                 <div className="pointer-events-none h-full w-full select-none">
                   {item.previewNode}
                 </div>
               ) : item.src ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={item.src}
                   alt={item.alt ?? item.title ?? `Modelo ${(i % total) + 1}`}
@@ -419,32 +429,27 @@ export default function ArcFlowCarousel({
                 />
               ) : null}
 
-              {(item.title || item.description) && (
+              {/* Barra Inferior Integrada: Rótulo da Profissão e Botão "Ver exemplo" */}
+              {item.title && (
                 <div
-                  className={`pointer-events-none absolute inset-x-0 bottom-0 p-4 text-white transition-all duration-300 ease-out ${
-                    reduceMotion
-                      ? "translate-y-0 opacity-100"
-                      : "translate-y-1 opacity-95 group-hover:translate-y-0 group-hover:opacity-100"
-                  }`}
-                  style={{
-                    background: "linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,0.76) 45%, rgba(15,23,42,0.95) 100%)",
-                  }}
+                  className="absolute inset-x-0 bottom-0 z-20 p-2 sm:p-2.5 bg-gradient-to-t from-slate-950/95 via-slate-950/75 to-transparent pt-6 flex items-center justify-between gap-1.5 text-white transition-all duration-200"
                 >
-                  {item.badge && (
-                    <span className="mb-1.5 inline-block rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider text-white uppercase backdrop-blur-sm">
-                      {item.badge}
-                    </span>
-                  )}
-                  {item.title && (
-                    <p className="text-sm font-semibold tracking-tight text-white">
-                      {item.title}
-                    </p>
-                  )}
-                  {item.description && (
-                    <p className="mt-1 text-xs leading-snug text-white/80">
-                      {item.description}
-                    </p>
-                  )}
+                  <p className="text-[11px] sm:text-xs font-bold tracking-tight text-white truncate drop-shadow-sm">
+                    {item.title}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onSelectCard) {
+                        onSelectCard(item, i % total);
+                      }
+                    }}
+                    className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-[10px] sm:text-[11px] font-bold shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Eye className="w-3 h-3" />
+                    <span>Ver exemplo</span>
+                  </button>
                 </div>
               )}
             </div>
