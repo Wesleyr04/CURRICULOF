@@ -24,13 +24,19 @@ export function getPaymentGateway(): IPaymentGateway {
   }
 
   if (gateway === "mercadopago") {
-    if (process.env.MERCADOPAGO_ACCESS_TOKEN) {
+    const mpToken =
+      process.env.MP_ACCESS_TOKEN ||
+      process.env.MERCADOPAGO_ACCESS_TOKEN ||
+      process.env.NEXT_PUBLIC_MP_ACCESS_TOKEN;
+    if (mpToken) {
       return new MercadoPagoGateway();
     }
     if (isProduction) {
-      throw new Error("Configuração de pagamento incompleta: MERCADOPAGO_ACCESS_TOKEN ausente em produção.");
+      throw new Error(
+        "Configuração de pagamento incompleta: MP_ACCESS_TOKEN ou MERCADOPAGO_ACCESS_TOKEN ausente em produção."
+      );
     }
-    console.warn("[Pagamento] MERCADOPAGO_ACCESS_TOKEN ausente. Alternando para MockPixGateway em desenvolvimento.");
+    console.warn("[Pagamento] Token do Mercado Pago ausente. Alternando para MockPixGateway em desenvolvimento.");
     return sharedMockGateway;
   }
 

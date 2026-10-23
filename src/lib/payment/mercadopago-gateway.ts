@@ -9,13 +9,19 @@ export class MercadoPagoGateway implements IPaymentGateway {
   private webhookSecret: string;
 
   constructor() {
-    this.accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN || "";
-    this.webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET || "";
+    this.accessToken =
+      (process.env.MP_ACCESS_TOKEN ||
+        process.env.MERCADOPAGO_ACCESS_TOKEN ||
+        process.env.NEXT_PUBLIC_MP_ACCESS_TOKEN ||
+        "").trim();
+    this.webhookSecret = (process.env.MERCADOPAGO_WEBHOOK_SECRET || process.env.MP_WEBHOOK_SECRET || "").trim();
   }
 
   async createPayment(params: CreatePaymentParams): Promise<PaymentCreationResult> {
     if (!this.accessToken) {
-      throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurada no servidor.");
+      throw new Error(
+        "Token de acesso do Mercado Pago (MP_ACCESS_TOKEN ou MERCADOPAGO_ACCESS_TOKEN) não configurado no servidor."
+      );
     }
 
     const valueInReais = params.amountInCents / 100;

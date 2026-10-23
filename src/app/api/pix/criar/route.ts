@@ -7,11 +7,14 @@ export async function POST(req: NextRequest) {
   try {
     await req.json().catch(() => ({}));
 
-    // Força a leitura direta da variável de ambiente da Vercel (suporta ambos os nomes)
-    const rawToken = process.env.MP_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
+    // Leitura direta da variável de ambiente do Mercado Pago (suporta MP_ACCESS_TOKEN, MERCADOPAGO_ACCESS_TOKEN e NEXT_PUBLIC_MP_ACCESS_TOKEN)
+    const rawToken =
+      process.env.MP_ACCESS_TOKEN ||
+      process.env.MERCADOPAGO_ACCESS_TOKEN ||
+      process.env.NEXT_PUBLIC_MP_ACCESS_TOKEN;
     const accessToken = typeof rawToken === "string" ? rawToken.trim() : "";
 
-    // Log seguro de auditoria para diagnóstico nos logs da Vercel
+    // Log seguro de auditoria para diagnóstico em produção (sem vazar o secret)
     console.log(
       "[MP Token Check] Token presente:",
       !!accessToken,
@@ -23,7 +26,10 @@ export async function POST(req: NextRequest) {
 
     if (!accessToken) {
       return NextResponse.json(
-        { error: "O token de acesso do Mercado Pago não está configurado nas variáveis de ambiente da Vercel." },
+        {
+          error:
+            "O token de acesso do Mercado Pago não está configurado nas variáveis de ambiente do servidor. Verifique se a variável MP_ACCESS_TOKEN ou MERCADOPAGO_ACCESS_TOKEN foi definida no painel de deploy.",
+        },
         { status: 401 }
       );
     }

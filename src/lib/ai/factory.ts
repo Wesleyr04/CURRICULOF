@@ -38,17 +38,26 @@ export function getAIService(): IAIService {
     );
   }
 
-  // 4. Provedor Anthropic (Padrão Oficial)
-  // Se AI_PROVIDER não for 'mock', a integração oficial da Anthropic é obrigatória.
-  // Jamais permitir fallback silencioso para Mock quando a chave faltar.
-  const rawKey = process.env.ANTHROPIC_API_KEY || "";
+  // 4. Provedor Anthropic / OpenRouter (Padrão Oficial de Alta Fidelidade)
+  // Se AI_PROVIDER não for 'mock', a integração de IA em nuvem é obrigatória.
+  // Suporta ANTHROPIC_API_KEY ou OPENROUTER_API_KEY.
+  const rawKey =
+    process.env.ANTHROPIC_API_KEY ||
+    process.env.OPENROUTER_API_KEY ||
+    "";
   const apiKey = rawKey.replace(/[\r\n"']/g, "").trim();
   if (!apiKey) {
-    throw new AIConfigurationError("ANTHROPIC_API_KEY ausente no ambiente do servidor.");
+    throw new AIConfigurationError(
+      "ANTHROPIC_API_KEY ausente no ambiente do servidor (defina ANTHROPIC_API_KEY ou OPENROUTER_API_KEY no painel de deploy)."
+    );
   }
 
-  const rawModel = process.env.ANTHROPIC_MODEL || "";
+  const rawModel =
+    process.env.ANTHROPIC_MODEL ||
+    process.env.OPENROUTER_MODEL ||
+    "";
   const cleanModel = rawModel.replace(/[\r\n"']/g, "").trim();
 
   return new AnthropicClientService(apiKey, cleanModel || undefined);
 }
+

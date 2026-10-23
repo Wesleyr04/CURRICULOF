@@ -14,7 +14,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const token = process.env.MP_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN;
+    const token =
+      process.env.MP_ACCESS_TOKEN ||
+      process.env.MERCADOPAGO_ACCESS_TOKEN ||
+      process.env.NEXT_PUBLIC_MP_ACCESS_TOKEN;
 
     // 1. Verifica se já está registrado e marcado como pago na orderStore em memória
     const storedOrder = orderStore.getOrder(id) || orderStore.getOrderByPaymentId(id);
@@ -28,7 +31,10 @@ export async function GET(req: NextRequest) {
 
     if (!token) {
       return NextResponse.json(
-        { error: "MP_ACCESS_TOKEN não configurada no servidor." },
+        {
+          error:
+            "Token de acesso do Mercado Pago não configurado no servidor (MP_ACCESS_TOKEN ou MERCADOPAGO_ACCESS_TOKEN).",
+        },
         { status: 500 }
       );
     }

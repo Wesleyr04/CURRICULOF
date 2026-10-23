@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { ExperienceItem, CreationMode, CareerStage } from "@/types/resume";
 import { Plus, Trash2, Sparkles, Loader2, ArrowLeft, ArrowRight, Briefcase, AlertCircle } from "lucide-react";
+import { sanitizeAiErrorMessage } from "@/lib/ai/errors";
 
 interface Step3Props {
   experiences: ExperienceItem[];
@@ -115,18 +116,21 @@ export function Step3Experience({
         }),
       });
 
-      if (!res.ok) throw new Error("Erro no aprimoramento de texto");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || "Erro no aprimoramento de texto");
+      }
 
       const result = await res.json();
       if (result.improvedText) {
         updateExperience(exp.id, "description", result.improvedText);
       }
-    } catch {
+    } catch (err: unknown) {
       setAiFeedbackMap((prev) => ({
         ...prev,
         [exp.id]: {
           type: "error",
-          message: "Não foi possível aprimorar o texto no momento. Tente novamente.",
+          message: sanitizeAiErrorMessage(err),
         },
       }));
     } finally {

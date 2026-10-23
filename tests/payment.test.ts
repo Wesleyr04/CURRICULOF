@@ -244,7 +244,9 @@ describe("Segurança Financeira e Camada de Pagamentos (R$ 5,00)", () => {
 
         expect(res.status).toBe(401);
         const data = await res.json();
-        expect(data.error).toBe("O token de acesso do Mercado Pago não está configurado nas variáveis de ambiente da Vercel.");
+        expect(data.error).toContain("O token de acesso do Mercado Pago não está configurado");
+        expect(data.error).toContain("MP_ACCESS_TOKEN ou MERCADOPAGO_ACCESS_TOKEN");
+        expect(data.error).not.toContain("Vercel");
       } finally {
         process.env.MP_ACCESS_TOKEN = oldToken;
         process.env.MERCADOPAGO_ACCESS_TOKEN = oldMpToken;

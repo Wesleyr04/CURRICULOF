@@ -4,35 +4,194 @@ import { IAIService, AISuggestSummaryParams, AIImproveTextParams } from "./types
 import { ResumeData, CreationMode } from "@/types/resume";
 import { normalizeJobTitle } from "./mock-service";
 import { buildSuggestSummaryPrompt, buildImproveTextPrompt, AI_SYSTEM_INSTRUCTIONS } from "./prompts";
-import { AIConfigurationError, AIContentRefusalError } from "./errors";
+import {
+  AIConfigurationError,
+  AIContentRefusalError,
+  AIServiceUnavailableError,
+  sanitizeAiErrorMessage,
+} from "./errors";
 import { isAiRefusal } from "@/lib/security/content-guard";
 import { aiTelemetryService } from "./telemetry/service";
 import { AIOperationType, TokenUsage } from "./telemetry/types";
 
 export class AnthropicClientService implements IAIService {
   public providerName = "Anthropic Claude (Oficial)";
-  private client: Anthropic;
+  private client: Anthropic | null = null;
+  private apiKey: string;
   private model: string;
+  private isOpenRouter: boolean;
+  private openRouterModel: string;
 
   constructor(apiKey?: string, model?: string) {
-    const rawKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
+    const rawKey =
+      apiKey ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENROUTER_API_KEY ||
+      "";
     const cleanKey = rawKey.replace(/[\r\n"']/g, "").trim();
     if (!cleanKey) {
       throw new AIConfigurationError(
-        "A chave de API da Anthropic (ANTHROPIC_API_KEY) não foi configurada no servidor."
+        "A chave de API da IA (ANTHROPIC_API_KEY ou OPENROUTER_API_KEY) não foi configurada no servidor."
       );
     }
 
-    const rawModel = model || process.env.ANTHROPIC_MODEL || "claude-3-5-haiku-20241022";
+    this.apiKey = cleanKey;
+
+    // Detecta se a chave ou ambiente são do OpenRouter
+    const envBaseUrl = (process.env.ANTHROPIC_BASE_URL || "").toLowerCase();
+    const envProvider = (process.env.AI_PROVIDER || "").toLowerCase();
+    this.isOpenRouter =
+      cleanKey.startsWith("sk-or-") ||
+      Boolean(process.env.OPENROUTER_API_KEY) ||
+      envBaseUrl.includes("openrouter.ai") ||
+      envProvider.includes("openrouter");
+
+    const rawModel =
+      model ||
+      process.env.ANTHROPIC_MODEL ||
+      process.env.OPENROUTER_MODEL ||
+      (this.isOpenRouter ? "anthropic/claude-3.5-haiku" : "claude-3-5-haiku-20241022");
     const cleanModel = (typeof rawModel === "string" ? rawModel : "").replace(/[\r\n"']/g, "").trim();
+
     if (!cleanModel) {
-      throw new AIConfigurationError("O identificador do modelo ANTHROPIC_MODEL é inválido.");
+      throw new AIConfigurationError("O identificador do modelo de inteligência artificial é inválido.");
     }
 
     this.model = cleanModel;
-    this.client = new Anthropic({
-      apiKey: cleanKey,
-    });
+
+    if (this.isOpenRouter) {
+      this.providerName = "OpenRouter (Claude Compatibility)";
+      // Se o modelo não contiver barra '/' no OpenRouter, padroniza para formato do OpenRouter
+      this.openRouterModel = cleanModel.includes("/")
+        ? cleanModel
+        : cleanModel.startsWith("claude")
+        ? `anthropic/${cleanModel.replace("-20241022", "")}`
+        : cleanModel;
+    } else {
+      this.providerName = "Anthropic Claude (Oficial)";
+      this.openRouterModel = cleanModel;
+      // Força baseURL oficial da Anthropic para evitar que ANTHROPIC_BASE_URL mal configurada quebre chamadas nativas
+      this.client = new Anthropic({
+        apiKey: cleanKey,
+        baseURL: "https://api.anthropic.com",
+      });
+    }
+  }
+
+  /**
+   * Chamada compatível com a API REST do OpenRouter (chat/completions padrão OpenAI)
+   * Previne 100% o erro 404 HTML da Cloudflare ao tentar chamar /v1/messages
+   */
+  private async callOpenRouterApi(
+    promptText: string,
+    maxTokens: number = 600,
+    operationType: AIOperationType = "unknown",
+    correlationId?: string
+  ): Promise<string> {
+    const startTime = Date.now();
+    const effectiveCorrelationId = correlationId || crypto.randomUUID();
+
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://fastcurriculo.com.br",
+          "X-Title": "FastCurriculo",
+        },
+        body: JSON.stringify({
+          model: this.openRouterModel,
+          messages: [
+            { role: "system", content: AI_SYSTEM_INSTRUCTIONS },
+            { role: "user", content: promptText },
+          ],
+          max_tokens: maxTokens,
+          temperature: 0.2,
+        }),
+      });
+
+      const durationMs = Date.now() - startTime;
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        console.error("[OpenRouter API Error]", res.status, errText.slice(0, 200));
+
+        const safeMsg = sanitizeAiErrorMessage(errText);
+        throw new AIServiceUnavailableError(safeMsg);
+      }
+
+      const data = await res.json().catch(() => null);
+      if (!data) {
+        throw new AIServiceUnavailableError(
+          "O provedor de inteligência artificial retornou uma resposta vazia."
+        );
+      }
+
+      const generatedText = (data.choices?.[0]?.message?.content || "").trim();
+
+      if (!generatedText) {
+        throw new AIServiceUnavailableError(
+          "Não foi possível obter texto gerado pelo provedor de inteligência artificial."
+        );
+      }
+
+      if (isAiRefusal(generatedText)) {
+        throw new AIContentRefusalError(
+          "Não foi possível gerar uma sugestão para os termos informados. Por favor, utilize uma nomenclatura corporativa ou profissional válida."
+        );
+      }
+
+      // Registro de telemetria
+      const inputTokens = typeof data.usage?.prompt_tokens === "number" ? data.usage.prompt_tokens : null;
+      const outputTokens = typeof data.usage?.completion_tokens === "number" ? data.usage.completion_tokens : null;
+
+      await aiTelemetryService.recordUsage({
+        model: data.model || this.openRouterModel,
+        requestedModel: this.openRouterModel,
+        actualModel: data.model || this.openRouterModel,
+        operationType,
+        source: "production",
+        usage: {
+          inputTokens,
+          outputTokens,
+          cacheCreationInputTokens: null,
+          cacheReadInputTokens: null,
+          tokensStatus: inputTokens !== null && outputTokens !== null ? "complete" : "unavailable",
+        },
+        correlationId: effectiveCorrelationId,
+        responseId: data.id || null,
+        durationMs,
+        status: "success",
+      });
+
+      return generatedText;
+    } catch (error: unknown) {
+      if (!(error instanceof AIContentRefusalError)) {
+        const durationMs = Date.now() - startTime;
+        await aiTelemetryService.recordUsage({
+          model: this.openRouterModel,
+          requestedModel: this.openRouterModel,
+          actualModel: undefined,
+          operationType,
+          source: "error",
+          usage: {
+            inputTokens: null,
+            outputTokens: null,
+            cacheCreationInputTokens: null,
+            cacheReadInputTokens: null,
+            tokensStatus: "unavailable",
+          },
+          correlationId: effectiveCorrelationId,
+          responseId: null,
+          durationMs,
+          status: "error",
+          errorCode: "OPENROUTER_ERROR",
+          errorMessageSafe: sanitizeAiErrorMessage(error),
+        });
+      }
+      throw error;
+    }
   }
 
   private async callAnthropic(
@@ -41,6 +200,10 @@ export class AnthropicClientService implements IAIService {
     operationType: AIOperationType = "unknown",
     correlationId?: string
   ): Promise<string> {
+    if (this.isOpenRouter || !this.client) {
+      return this.callOpenRouterApi(promptText, maxTokens, operationType, correlationId);
+    }
+
     const startTime = Date.now();
     const effectiveCorrelationId = correlationId || crypto.randomUUID();
 
@@ -137,6 +300,7 @@ export class AnthropicClientService implements IAIService {
         const durationMs = Date.now() - startTime;
         const errObj = error as { name?: string; status?: number; message?: string };
         const errorCode = errObj?.name || (errObj?.status ? `HTTP_${errObj.status}` : "API_ERROR");
+        const safeErrorMsg = sanitizeAiErrorMessage(error);
 
         await aiTelemetryService.recordUsage({
           model: this.model,
@@ -156,8 +320,10 @@ export class AnthropicClientService implements IAIService {
           durationMs,
           status: "error",
           errorCode,
-          errorMessageSafe: error instanceof Error ? error.message : "Erro desconhecido",
+          errorMessageSafe: safeErrorMsg,
         });
+
+        throw new AIServiceUnavailableError(safeErrorMsg);
       }
 
       throw error;

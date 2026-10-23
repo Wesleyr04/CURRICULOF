@@ -361,7 +361,7 @@ export function PaymentModal({
                   {error}
                 </div>
                 <p className="text-[11px] text-slate-500 pt-1">
-                  Verifique se a variável <code>MP_ACCESS_TOKEN</code> no painel de ambiente possui permissões de checkout/Pix.
+                  Verifique se a variável <code>MP_ACCESS_TOKEN</code> ou <code>MERCADOPAGO_ACCESS_TOKEN</code> no painel de deploy possui credenciais válidas de produção para Pix.
                 </p>
               </div>
               <div className="flex gap-2 justify-center pt-2">

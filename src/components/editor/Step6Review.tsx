@@ -21,9 +21,11 @@ import {
   ChevronRight,
   Wand2,
   Eye,
+  Lightbulb,
 } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
 import { validateResumeForExport, isAiRefusal } from "@/lib/security/content-guard";
+import { sanitizeAiErrorMessage } from "@/lib/ai/errors";
 
 interface Step6Props {
   resumeData: ResumeData;
@@ -114,6 +116,28 @@ export function Step6Review({
   const carouselRef = useRef<HTMLDivElement>(null);
   const { customization } = resumeData;
 
+  const hasInitializedFromContextRef = useRef(false);
+
+  // Ponte Automática Etapa 2 -> Etapa 6:
+  // Se o usuário preencheu o contexto na Etapa 2 e a seção 'Sobre você' estiver vazia,
+  // pré-popula automaticamente com o rascunho de contexto para o usuário não ter que digitar do zero.
+  useEffect(() => {
+    if (hasInitializedFromContextRef.current) return;
+    const currentSummary = (resumeData.target.summary || "").trim();
+    const contextFromStep2 = (resumeData.target.careerContext || "").trim();
+
+    if (!currentSummary && contextFromStep2) {
+      hasInitializedFromContextRef.current = true;
+      onApplyAiImprovement({
+        ...resumeData,
+        target: {
+          ...resumeData.target,
+          summary: contextFromStep2,
+        },
+      });
+    }
+  }, [onApplyAiImprovement, resumeData]);
+
   const scrollToSlide = (index: number) => {
     setActiveSlide(index);
     if (carouselRef.current) {
@@ -202,6 +226,12 @@ export function Step6Review({
         }));
       const cleanCertifications = (resumeData.certifications || []).filter((c) => c && c.trim());
 
+      // Se o campo summary estiver vazio, utiliza o contexto da Etapa 2 como rascunho de partida
+      const baseSummaryDraft =
+        (resumeData.target.summary || "").trim() ||
+        (resumeData.target.careerContext || "").trim() ||
+        undefined;
+
       const res = await fetch("/api/ai/suggest-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -210,7 +240,7 @@ export function Step6Review({
           field: resumeData.target.field?.trim() || cleanJob,
           careerStage: resumeData.target.careerStage || "experienced",
           careerContext: resumeData.target.careerContext?.trim() || undefined,
-          currentSummary: resumeData.target.summary ? resumeData.target.summary.trim() : undefined,
+          currentSummary: baseSummaryDraft,
           mode: resumeData.creationMode || "simple",
           experiences: cleanExperiences,
           skills: cleanSkills,
@@ -223,8 +253,8 @@ export function Step6Review({
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
-        const detailedMsg = errorData?.diagnostic || errorData?.error || "Falha ao comunicar com o serviço Fast.";
-        throw new Error(detailedMsg);
+        const detailedMsg = errorData?.error || "Falha ao comunicar com o serviço Fast.";
+        throw new Error(sanitizeAiErrorMessage(detailedMsg));
       }
 
       const result = await res.json();
@@ -248,7 +278,7 @@ export function Step6Review({
       setAiSuccessMessage("Apresentação 'Sobre você' gerada com sucesso pelo Fast, combinando seu histórico completo!");
       setTimeout(() => setAiSuccessMessage(null), 8000);
     } catch (err: unknown) {
-      setSummaryAiError(err instanceof Error ? err.message : "Não foi possível gerar a apresentação no momento.");
+      setSummaryAiError(sanitizeAiErrorMessage(err));
     } finally {
       setLoadingSummaryAi(false);
     }
@@ -263,10 +293,28 @@ export function Step6Review({
     const backup = JSON.parse(JSON.stringify(resumeData)) as ResumeData;
 
     try {
+      // Limpa dados vazios para evitar rejeições acidentais no backend
+      const sanitizedPayload: ResumeData = {
+        ...resumeData,
+        target: {
+          ...resumeData.target,
+          // Se summary ainda estiver vazio, envia o contexto da Etapa 2 para a IA estruturar
+          summary:
+            (resumeData.target.summary || "").trim() ||
+            (resumeData.target.careerContext || "").trim(),
+        },
+        experiences: (resumeData.experiences || []).filter(
+          (e) => (e.role && e.role.trim()) || (e.company && e.company.trim()) || (e.description && e.description.trim())
+        ),
+        education: (resumeData.education || []).filter(
+          (ed) => (ed.course && ed.course.trim()) || (ed.institution && ed.institution.trim())
+        ),
+      };
+
       const res = await fetch("/api/ai/improve-full", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(resumeData),
+        body: JSON.stringify(sanitizedPayload),
       });
 
       if (!res.ok) {
@@ -282,11 +330,7 @@ export function Step6Review({
         setTimeout(() => setAiSuccessMessage(null), 8000);
       }
     } catch (err: unknown) {
-      setFullAiError(
-        err instanceof Error
-          ? err.message
-          : "Não foi possível aprimorar a redação no momento. Tente novamente."
-      );
+      setFullAiError(sanitizeAiErrorMessage(err));
     } finally {
       setLoadingAi(false);
     }
@@ -373,23 +417,6 @@ export function Step6Review({
         </div>
       </div>
 
-      {/* Botão de Destaque Rápido para Download (Sempre visível em qualquer slide da Etapa 6) */}
-      <div className="p-3 sm:p-3.5 bg-gradient-to-r from-emerald-700 to-emerald-800 text-white rounded-xl shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="text-center sm:text-left">
-          <span className="text-xs sm:text-sm font-extrabold block">Currículo pronto para baixar!</span>
-          <span className="text-[11px] text-emerald-100 block">
-            Libere o PDF oficial em alta resolução por apenas {SITE_CONFIG.pricing.formatted} (Pix imediato).
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={handleDownloadCheckout}
-          className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold text-emerald-950 bg-white hover:bg-emerald-50 rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-        >
-          <Download className="w-3.5 h-3.5 text-emerald-800" />
-          <span>Baixar PDF ({SITE_CONFIG.pricing.formatted})</span>
-        </button>
-      </div>
 
       {/* Banner de Sucesso / Desfazer Alterações da IA */}
       {aiSuccessMessage && (
@@ -565,9 +592,23 @@ export function Step6Review({
             </div>
 
             <div className="mt-3 space-y-3">
+              {/* Vínculo contextual automático com a Etapa 2 */}
+              {resumeData.target.careerContext?.trim() && (
+                <div className="flex items-start gap-2 p-2.5 bg-blue-50/80 border border-blue-200/80 rounded-xl text-[11px] text-blue-900 leading-snug">
+                  <Lightbulb className="w-3.5 h-3.5 text-blue-700 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Contexto da Etapa 2 vinculado com sucesso:</span>{" "}
+                    <span className="text-slate-700">&quot;{resumeData.target.careerContext}&quot;</span>
+                    <span className="block text-[10px] text-blue-800/80 mt-0.5">
+                      Esse texto já foi aproveitado no campo abaixo. Clique no botão ao lado para lapidá-lo profissionalmente com o Fast.
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <p className="text-xs text-slate-600 leading-relaxed max-w-md">
-                  O Fast vai usar seu histórico de experiências, formação e competências para escrever uma apresentação profissional forte sobre você.
+                  O Fast vai articular seu objetivo, contexto, formação e experiências para redigir uma apresentação profissional de alto impacto.
                 </p>
 
                 {/* Botão de Ação do Fast */}
@@ -580,12 +621,17 @@ export function Step6Review({
                   {loadingSummaryAi ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                      <span>Fast estruturando texto sobre você...</span>
+                      <span>Fast estruturando apresentação...</span>
                     </>
                   ) : (resumeData.target.summary || "").trim().length > 0 ? (
                     <>
                       <Sparkles className="w-3.5 h-3.5 text-blue-200" />
                       <span>✨ Reescrever com o Fast</span>
+                    </>
+                  ) : resumeData.target.careerContext?.trim() ? (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-blue-200" />
+                      <span>✨ Gerar a partir do Contexto</span>
                     </>
                   ) : (
                     <>
@@ -611,7 +657,7 @@ export function Step6Review({
                       },
                     });
                   }}
-                  placeholder="Escreva brevemente sobre você ou clique em 'Gerar texto com o Fast' para estruturar sua apresentação alinhada ao seu momento de carreira..."
+                  placeholder="Escreva brevemente sobre você ou clique em 'Gerar com o Fast' para estruturar sua apresentação alinhada ao seu momento de carreira..."
                   className="w-full p-3 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-800 text-slate-900 leading-relaxed shadow-2xs"
                 />
                 <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500">
@@ -621,7 +667,7 @@ export function Step6Review({
               </div>
 
               {summaryAiError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2 text-rose-800 text-xs">
+                <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2 text-rose-800 text-xs">
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                   <span>{summaryAiError}</span>
                 </div>
@@ -634,7 +680,7 @@ export function Step6Review({
                   onClick={() => scrollToSlide(2)}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-blue-900 hover:text-blue-950 hover:underline cursor-pointer"
                 >
-                  <span>Avançar para Revisão do Fast &rarr;</span>
+                  <span>Avançar para Revisão Geral do Fast &rarr;</span>
                 </button>
               </div>
             </div>
@@ -660,7 +706,7 @@ export function Step6Review({
                 Revisar e Profissionalizar Toda a Redação
               </h4>
               <p className="text-[11px] text-blue-100 leading-relaxed">
-                O Fast vai corrigir a ortografia, padronizar nomenclaturas de cargos e converter suas atividades em tópicos de ação profissionais, preservando 100% dos seus dados reais.
+                O Fast vai aprimorar todo o currículo: gera ou enriquece a seção &quot;Sobre você&quot; (usando seu contexto da Etapa 2 e formação), padroniza o cargo pretendido e converte experiências em tópicos de ação de alto impacto para triagem ATS. Funciona tanto para profissionais com histórico quanto para Primeiro Emprego e Estágio.
               </p>
 
               <div className="pt-1">

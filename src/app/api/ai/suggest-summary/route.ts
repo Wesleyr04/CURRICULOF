@@ -6,7 +6,7 @@ import { validateContentSafety } from "@/lib/security/content-guard";
 import { checkAiRateLimit, getClientIp } from "@/lib/security/rate-limit";
 
 const RequestSchema = z.object({
-  jobTitle: z.string().min(1).max(100),
+  jobTitle: z.string().max(100).optional().default("Profissional"),
   field: z.string().max(100).optional().default(""),
   careerStage: z.enum(["experienced", "entry_level", "career_transition"]).optional().default("experienced"),
   careerContext: z.string().max(500).optional(),
@@ -63,7 +63,15 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const parsed = RequestSchema.safeParse(body);
+    const effectiveJobTitle =
+      (typeof body?.jobTitle === "string" && body.jobTitle.trim()) ||
+      (typeof body?.field === "string" && body.field.trim()) ||
+      "Profissional";
+
+    const parsed = RequestSchema.safeParse({
+      ...body,
+      jobTitle: effectiveJobTitle,
+    });
 
     if (!parsed.success) {
       return NextResponse.json(
