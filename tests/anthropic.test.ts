@@ -36,6 +36,9 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
     vi.clearAllMocks();
     process.env = { ...originalEnv };
 
+    const { resetRateLimitStore } = await import("@/lib/security/rate-limit");
+    resetRateLimitStore();
+
     // Isola o repositório de telemetria para garantir que nenhum teste suje o arquivo real
     const { aiTelemetryService } = await import("@/lib/ai/telemetry/service");
     (aiTelemetryService as any).repository = {
@@ -338,7 +341,89 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
 
       const json = await res.json();
       expect(json.error).toBeTruthy();
+      expect(json.code).toBe("CONFIG_ERROR");
       expect(json.summary).toBeUndefined();
+    });
+
+    it("/api/ai/suggest-summary deve retornar 401 e código AUTH_ERROR (sem mascarar como 503) se a API da Anthropic rejeitar por chave inválida", async () => {
+      process.env.AI_PROVIDER = "anthropic";
+      process.env.ANTHROPIC_API_KEY = "sk-ant-test-key-invalid";
+
+      mockCreate.mockRejectedValueOnce(
+        Object.assign(new Error("invalid x-api-key"), {
+          status: 401,
+          name: "AuthenticationError",
+        })
+      );
+
+      const { POST } = await import("@/app/api/ai/suggest-summary/route");
+      const req = new Request("http://localhost:3000/api/ai/suggest-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobTitle: "Analista de Sistemas",
+          field: "Tecnologia",
+        }),
+      });
+
+      const res = await POST(req as any);
+      expect(res.status).toBe(401);
+
+      const json = await res.json();
+      expect(json.code).toBe("AUTH_ERROR");
+      expect(json.error).toContain("Falha de autenticação");
+    });
+
+    it("/api/ai/suggest-summary deve aceitar payload com histórico completo extenso (experiências, educação, cursos) sem erro 400", async () => {
+      process.env.AI_PROVIDER = "mock";
+
+      const { POST } = await import("@/app/api/ai/suggest-summary/route");
+      const req = new Request("http://localhost:3000/api/ai/suggest-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobTitle: "Desenvolvedor Full Stack Sênior",
+          field: "Engenharia de Software",
+          careerStage: "experienced",
+          careerContext: "Foco em arquitetura escalável e liderança técnica de times distribuídos.",
+          currentSummary: "Profissional com mais de 8 anos de experiência em desenvolvimento de software de alta escala.",
+          mode: "complete",
+          experiences: [
+            {
+              role: "Tech Lead",
+              company: "Empresa Alfa",
+              description: "Liderança de time de engenharia focado em microserviços e alta disponibilidade.",
+              achievements: "Redução de latência em 40% e migração para arquitetura cloud.",
+            },
+            {
+              role: "Engenheiro de Software Sênior",
+              company: "Empresa Beta",
+              description: "Desenvolvimento de APIs em Node.js e interfaces modernas em Next.js.",
+            },
+          ],
+          education: [
+            {
+              course: "Ciência da Computação",
+              institution: "Universidade de São Paulo",
+            },
+          ],
+          courses: [
+            {
+              name: "Arquitetura Cloud AWS",
+              institution: "AWS Training",
+            },
+          ],
+          skills: ["TypeScript", "React", "Node.js", "Docker", "PostgreSQL"],
+          softSkills: ["Liderança", "Comunicação", "Resolução de Problemas"],
+          certifications: ["AWS Certified Solutions Architect"],
+        }),
+      });
+
+      const res = await POST(req as any);
+      expect(res.status).toBe(200);
+
+      const json = await res.json();
+      expect(json.summary).toBeTruthy();
     });
   });
 });

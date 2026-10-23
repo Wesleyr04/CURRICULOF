@@ -199,38 +199,62 @@ export function Step6Review({
     try {
       const cleanExperiences = (resumeData.experiences || [])
         .filter((e) => {
-          const role = (e.role || "").trim();
-          const company = (e.company || "").trim();
-          return Boolean(role || company);
+          const role = typeof e?.role === "string" ? e.role.trim() : "";
+          const company = typeof e?.company === "string" ? e.company.trim() : "";
+          const desc = typeof e?.description === "string" ? e.description.trim() : "";
+          return Boolean(role || company || desc);
         })
+        .slice(0, 6)
         .map((e) => ({
-          role: e.role.trim(),
-          company: e.company.trim(),
-          description: (e.description || "").trim(),
-          achievements: (e.achievements || "").trim(),
+          role: (typeof e?.role === "string" ? e.role.trim() : "") || "Profissional",
+          company: (typeof e?.company === "string" ? e.company.trim() : "") || "Empresa",
+          description: typeof e?.description === "string" ? e.description.trim().slice(0, 1000) : "",
+          achievements: typeof e?.achievements === "string" ? e.achievements.trim().slice(0, 800) : "",
         }));
 
-      const cleanSkills = (resumeData.technicalSkills || []).filter((s) => s && s.trim());
-      const cleanSoftSkills = (resumeData.softSkills || []).filter((s) => s && s.trim());
+      const cleanSkills = (resumeData.technicalSkills || [])
+        .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+        .map((s) => s.trim().slice(0, 50))
+        .slice(0, 20);
+
+      const cleanSoftSkills = (resumeData.softSkills || [])
+        .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+        .map((s) => s.trim().slice(0, 50))
+        .slice(0, 20);
+
       const cleanEducation = (resumeData.education || [])
-        .filter((ed) => (ed.course && ed.course.trim()) || (ed.institution && ed.institution.trim()))
+        .filter((ed) => {
+          const c = typeof ed?.course === "string" ? ed.course.trim() : "";
+          const inst = typeof ed?.institution === "string" ? ed.institution.trim() : "";
+          return Boolean(c || inst);
+        })
+        .slice(0, 4)
         .map((ed) => ({
-          course: ed.course.trim(),
-          institution: ed.institution.trim(),
+          course: (typeof ed?.course === "string" ? ed.course.trim().slice(0, 100) : "") || "Formação",
+          institution: (typeof ed?.institution === "string" ? ed.institution.trim().slice(0, 100) : "") || "Instituição",
         }));
+
       const cleanCourses = (resumeData.courses || [])
-        .filter((c) => c.name && c.name.trim())
+        .filter((c) => typeof c?.name === "string" && c.name.trim().length > 0)
+        .slice(0, 6)
         .map((c) => ({
-          name: c.name.trim(),
-          institution: (c.institution || "").trim(),
+          name: c.name.trim().slice(0, 120),
+          institution: typeof c?.institution === "string" ? c.institution.trim().slice(0, 100) : "",
         }));
-      const cleanCertifications = (resumeData.certifications || []).filter((c) => c && c.trim());
+
+      const cleanCertifications = (resumeData.certifications || [])
+        .filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+        .map((c) => c.trim().slice(0, 100))
+        .slice(0, 10);
 
       // Se o campo summary estiver vazio, utiliza o contexto da Etapa 2 como rascunho de partida
       const baseSummaryDraft =
-        (resumeData.target.summary || "").trim() ||
-        (resumeData.target.careerContext || "").trim() ||
-        undefined;
+        (typeof resumeData.target?.summary === "string" && resumeData.target.summary.trim().length > 0
+          ? resumeData.target.summary.trim().slice(0, 1500)
+          : undefined) ||
+        (typeof resumeData.target?.careerContext === "string" && resumeData.target.careerContext.trim().length > 0
+          ? resumeData.target.careerContext.trim().slice(0, 800)
+          : undefined);
 
       const res = await fetch("/api/ai/suggest-summary", {
         method: "POST",
@@ -253,8 +277,12 @@ export function Step6Review({
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
-        const detailedMsg = errorData?.error || "Falha ao comunicar com o serviço Fast.";
-        throw new Error(sanitizeAiErrorMessage(detailedMsg));
+        const detailedMsg =
+          errorData?.error ||
+          (res.status === 401
+            ? "Falha de autenticação com o provedor de IA. Verifique as credenciais no servidor."
+            : "Falha ao comunicar com o serviço Fast.");
+        throw new Error(detailedMsg);
       }
 
       const result = await res.json();

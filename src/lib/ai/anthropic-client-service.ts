@@ -6,6 +6,8 @@ import { normalizeJobTitle } from "./mock-service";
 import { buildSuggestSummaryPrompt, buildImproveTextPrompt, AI_SYSTEM_INSTRUCTIONS } from "./prompts";
 import {
   AIConfigurationError,
+  AIAuthenticationError,
+  AIRateLimitError,
   AIContentRefusalError,
   AIServiceUnavailableError,
   sanitizeAiErrorMessage,
@@ -116,6 +118,20 @@ export class AnthropicClientService implements IAIService {
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
         console.error("[OpenRouter API Error]", res.status, errText.slice(0, 200));
+
+        if (res.status === 401) {
+          throw new AIAuthenticationError(
+            "Falha de autenticação com o provedor de IA. Credenciais inválidas ou revogadas."
+          );
+        }
+        if (res.status === 429) {
+          throw new AIRateLimitError("Limite de requisições excedido no provedor de IA.");
+        }
+        if (res.status === 403) {
+          const err = new Error("Acesso não autorizado ao modelo de inteligência artificial.");
+          Object.assign(err, { status: 403, name: "PermissionDeniedError" });
+          throw err;
+        }
 
         const safeMsg = sanitizeAiErrorMessage(errText);
         throw new AIServiceUnavailableError(safeMsg);
@@ -322,6 +338,45 @@ export class AnthropicClientService implements IAIService {
           errorCode,
           errorMessageSafe: safeErrorMsg,
         });
+
+        // Diferenciação e propagação fiel de erros da API para evitar mascaramento como 503
+        const rawErrMsg = typeof errObj?.message === "string" ? errObj.message : "";
+        const effectiveErrMsg = rawErrMsg || safeErrorMsg;
+
+        if (
+          errObj?.status === 401 ||
+          errObj?.name === "AuthenticationError" ||
+          (rawErrMsg && (rawErrMsg.includes("authentication_error") || rawErrMsg.includes("invalid x-api-key")))
+        ) {
+          const authErr = new AIAuthenticationError(
+            effectiveErrMsg || "Falha de autenticação com o provedor de IA. Credenciais inválidas ou revogadas."
+          );
+          Object.assign(authErr, { status: 401, name: "AuthenticationError" });
+          throw authErr;
+        }
+
+        if (errObj?.status === 429 || errObj?.name === "RateLimitError") {
+          const rateErr = new AIRateLimitError(effectiveErrMsg || "Limite de requisições excedido no provedor de IA.");
+          Object.assign(rateErr, { status: 429, name: "RateLimitError" });
+          throw rateErr;
+        }
+
+        if (errObj?.status === 403 || errObj?.name === "PermissionDeniedError") {
+          const permErr = new Error(effectiveErrMsg || "Acesso não autorizado ao modelo de inteligência artificial.");
+          Object.assign(permErr, { status: 403, name: "PermissionDeniedError" });
+          throw permErr;
+        }
+
+        if (
+          errObj?.status === 400 ||
+          errObj?.status === 404 ||
+          errObj?.name === "BadRequestError" ||
+          errObj?.name === "NotFoundError"
+        ) {
+          const reqErr = new Error(effectiveErrMsg || "Requisição inválida enviada ao provedor de IA.");
+          Object.assign(reqErr, { status: errObj?.status || 400, name: errObj?.name || "BadRequestError" });
+          throw reqErr;
+        }
 
         throw new AIServiceUnavailableError(safeErrorMsg);
       }

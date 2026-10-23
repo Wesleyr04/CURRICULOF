@@ -6,43 +6,43 @@ import { validateContentSafety } from "@/lib/security/content-guard";
 import { checkAiRateLimit, getClientIp } from "@/lib/security/rate-limit";
 
 const RequestSchema = z.object({
-  jobTitle: z.string().max(100).optional().default("Profissional"),
-  field: z.string().max(100).optional().default(""),
+  jobTitle: z.string().max(120).optional().default("Profissional"),
+  field: z.string().max(120).optional().default(""),
   careerStage: z.enum(["experienced", "entry_level", "career_transition"]).optional().default("experienced"),
-  careerContext: z.string().max(500).optional(),
-  currentSummary: z.string().max(1200).optional(),
+  careerContext: z.string().max(1000).optional(),
+  currentSummary: z.string().max(2500).optional(),
   experiences: z
     .array(
       z.object({
-        role: z.string().max(60),
-        company: z.string().max(60),
-        description: z.string().max(600),
-        achievements: z.string().max(400).optional(),
+        role: z.string().max(120).optional().default("Profissional"),
+        company: z.string().max(120).optional().default(""),
+        description: z.string().max(1500).optional().default(""),
+        achievements: z.string().max(1000).optional().default(""),
       })
     )
-    .max(6)
+    .max(10)
     .optional(),
-  skills: z.array(z.string().max(40)).max(20).optional(),
-  softSkills: z.array(z.string().max(40)).max(20).optional(),
+  skills: z.array(z.string().max(60)).max(30).optional(),
+  softSkills: z.array(z.string().max(60)).max(30).optional(),
   education: z
     .array(
       z.object({
-        course: z.string().max(80),
-        institution: z.string().max(80),
+        course: z.string().max(120).optional().default(""),
+        institution: z.string().max(120).optional().default(""),
       })
     )
-    .max(4)
+    .max(10)
     .optional(),
   courses: z
     .array(
       z.object({
-        name: z.string().max(80),
-        institution: z.string().max(80),
+        name: z.string().max(140).optional().default(""),
+        institution: z.string().max(120).optional().default(""),
       })
     )
-    .max(6)
+    .max(10)
     .optional(),
-  certifications: z.array(z.string().max(80)).max(10).optional(),
+  certifications: z.array(z.string().max(140)).max(20).optional(),
   mode: z.enum(["simple", "complete"]).optional().default("simple"),
   correlationId: z.string().max(100).optional(),
 });
@@ -74,8 +74,15 @@ export async function POST(req: NextRequest) {
     });
 
     if (!parsed.success) {
+      console.warn("[POST /api/ai/suggest-summary Validation Failed]", {
+        issues: parsed.error.issues,
+      });
       return NextResponse.json(
-        { error: "Dados inválidos fornecidos para a sugestão de resumo.", details: parsed.error.format() },
+        {
+          error: "Dados inválidos fornecidos para a sugestão de resumo.",
+          details: parsed.error.format(),
+          code: "VALIDATION_ERROR",
+        },
         { status: 400 }
       );
     }
@@ -154,6 +161,13 @@ export async function POST(req: NextRequest) {
       }
     );
   } catch (error: unknown) {
+    const errObj = error as { name?: string; status?: number; message?: string };
+    console.error("[POST /api/ai/suggest-summary Route Error]", {
+      timestamp: new Date().toISOString(),
+      name: errObj?.name,
+      status: errObj?.status,
+      message: errObj?.message,
+    });
     return handleAIRouteError(error);
   }
 }

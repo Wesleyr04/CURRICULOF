@@ -19,8 +19,12 @@ export function buildSuggestSummaryPrompt(params: AISuggestSummaryParams): strin
   const stage = params.careerStage || "experienced";
 
   const experiencesList = (params.experiences || [])
+    .filter((e) => Boolean((e.role || "").trim() || (e.company || "").trim() || (e.description || "").trim()))
     .map((e) => {
-      const parts = [`- ${e.role} na ${e.company}: ${e.description}`];
+      const role = (e.role || "").trim() || "Atuação Profissional";
+      const company = (e.company || "").trim() ? ` na ${(e.company || "").trim()}` : "";
+      const desc = (e.description || "").trim() ? `: ${(e.description || "").trim()}` : "";
+      const parts = [`- ${role}${company}${desc}`];
       if (e.achievements && e.achievements.trim()) {
         parts.push(`  (Conquistas informadas: ${e.achievements.trim()})`);
       }
@@ -28,15 +32,25 @@ export function buildSuggestSummaryPrompt(params: AISuggestSummaryParams): strin
     })
     .join("\n");
 
-  const skillsList = (params.skills || []).join(", ");
-  const softSkillsList = (params.softSkills || []).join(", ");
+  const skillsList = (params.skills || []).filter(Boolean).map((s) => String(s).trim()).filter(Boolean).join(", ");
+  const softSkillsList = (params.softSkills || []).filter(Boolean).map((s) => String(s).trim()).filter(Boolean).join(", ");
   const educationList = (params.education || [])
-    .map((ed) => `- ${ed.course} em ${ed.institution}`)
+    .filter((ed) => Boolean((ed.course || "").trim() || (ed.institution || "").trim()))
+    .map((ed) => {
+      const course = (ed.course || "").trim() || "Formação";
+      const inst = (ed.institution || "").trim() ? ` em ${(ed.institution || "").trim()}` : "";
+      return `- ${course}${inst}`;
+    })
     .join("\n");
   const coursesList = (params.courses || [])
-    .map((c) => `- ${c.name} (${c.institution})`)
+    .filter((c) => Boolean((c.name || "").trim()))
+    .map((c) => {
+      const name = (c.name || "").trim();
+      const inst = (c.institution || "").trim() ? ` (${(c.institution || "").trim()})` : "";
+      return `- ${name}${inst}`;
+    })
     .join("\n");
-  const certsList = (params.certifications || []).join(", ");
+  const certsList = (params.certifications || []).filter(Boolean).map((c) => String(c).trim()).filter(Boolean).join(", ");
 
   const targetLengthGuideline = isSimple
     ? "MODO SIMPLES: Elabore um Resumo / Objetivo Profissional direto, conciso e objetivo em parágrafo único de 2 a 3 linhas (entre 180 e 280 caracteres), com leitura rápida e foco nas competências centrais da candidatura."

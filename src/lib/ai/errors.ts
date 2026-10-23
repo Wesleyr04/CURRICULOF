@@ -115,6 +115,18 @@ export function handleAIRouteError(error: unknown): NextResponse {
   const errorName = typeof errObj?.name === "string" ? errObj.name : "";
   const rawMsg = typeof errObj?.message === "string" ? errObj.message : String(error);
   const safeMessage = sanitizeAiErrorMessage(rawMsg);
+  const isDev = process.env.NODE_ENV !== "production";
+
+  // Registro forense incondicional de erro no servidor (Zero-PII de secrets)
+  console.error("[AI Route Error]", {
+    name: errorName || "UnknownError",
+    status,
+    message: rawMsg ? rawMsg.slice(0, 300) : "Erro não detalhado",
+    isConfigError: error instanceof AIConfigurationError,
+    isAuthError: error instanceof AIAuthenticationError || status === 401,
+    isRateLimit: error instanceof AIRateLimitError || status === 429,
+    isUnavailable: error instanceof AIServiceUnavailableError || status === 503,
+  });
 
   // Recusa de conteúdo ou termos não corporativos (HTTP 422)
   if (error instanceof AIContentRefusalError || errorName === "AIContentRefusalError" || status === 422) {
@@ -123,6 +135,7 @@ export function handleAIRouteError(error: unknown): NextResponse {
         error:
           (typeof errObj?.message === "string" ? errObj.message : null) ||
           "Não foi possível gerar uma sugestão para os termos informados. Por favor, utilize uma nomenclatura corporativa ou profissional válida.",
+        code: "CONTENT_REFUSAL",
       },
       { status: 422 }
     );
@@ -133,42 +146,57 @@ export function handleAIRouteError(error: unknown): NextResponse {
     return NextResponse.json(
       {
         error: "O serviço de inteligência artificial não foi configurado no servidor. Você pode preencher manualmente.",
+        code: "CONFIG_ERROR",
       },
       { status: 503 }
     );
   }
 
-  // Autenticação (Chave inválida ou expirada)
+  // Autenticação (Chave inválida ou expirada - HTTP 401)
   if (status === 401 || error instanceof AIAuthenticationError || errorName === "AuthenticationError") {
     return NextResponse.json(
       {
         error: "Falha de autenticação com o provedor de IA. Credenciais inválidas ou revogadas.",
+        code: "AUTH_ERROR",
       },
       { status: 401 }
     );
   }
 
-  // Permissão negada
+  // Permissão negada (HTTP 403)
   if (status === 403 || errorName === "PermissionDeniedError") {
     return NextResponse.json(
       {
         error: "Acesso não autorizado ao modelo de inteligência artificial.",
+        code: "FORBIDDEN",
       },
       { status: 403 }
     );
   }
 
-  // Limite de taxa (Rate Limit)
+  // Limite de taxa (Rate Limit - HTTP 429)
   if (status === 429 || error instanceof AIRateLimitError || errorName === "RateLimitError") {
     return NextResponse.json(
       {
         error: "Limite de requisições excedido. Por favor, aguarde alguns segundos e tente novamente.",
+        code: "RATE_LIMIT_ERROR",
       },
       { status: 429 }
     );
   }
 
-  // Indisponibilidade do provedor ou falha de conexão
+  // Requisição inválida ao provedor ou modelo não encontrado (HTTP 400 / 404)
+  if (status === 400 || status === 404 || errorName === "BadRequestError" || errorName === "NotFoundError") {
+    return NextResponse.json(
+      {
+        error: safeMessage || "Requisição inválida enviada ao provedor de IA. Verifique os parâmetros informados.",
+        code: "BAD_REQUEST_ERROR",
+      },
+      { status: 400 }
+    );
+  }
+
+  // Indisponibilidade do provedor ou falha de conexão (HTTP 503)
   if (
     status === 503 ||
     status === 502 ||
@@ -180,21 +208,17 @@ export function handleAIRouteError(error: unknown): NextResponse {
     return NextResponse.json(
       {
         error: "O serviço de inteligência artificial está temporariamente indisponível. Tente novamente em instantes.",
+        code: "SERVICE_UNAVAILABLE",
       },
       { status: 503 }
     );
   }
 
-  // Erro genérico seguro
-  console.error("[AI Route Error]", {
-    name: errorName || "UnknownError",
-    status,
-    message: rawMsg ? rawMsg.slice(0, 150) : "Erro não detalhado",
-  });
-
+  // Erro genérico seguro (HTTP 500)
   return NextResponse.json(
     {
       error: safeMessage || "Não foi possível concluir a operação de assistência por IA no momento.",
+      code: "INTERNAL_ERROR",
     },
     { status: 500 }
   );
