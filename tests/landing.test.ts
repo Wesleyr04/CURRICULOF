@@ -25,21 +25,37 @@ describe("Landing Page — Copywriting e Posicionamento", () => {
     expect(SITE_CONFIG.pricing.period).toBe("pagamento único");
   });
 
-  it("deve conter passos orientados a preenchimento, personalização e download instantâneo", () => {
+  it("deve conter passos orientados a preenchimento, organização e download do PDF", () => {
     expect(SITE_CONFIG.steps).toHaveLength(3);
-    expect(SITE_CONFIG.steps[0].title).toContain("Organize");
-    expect(SITE_CONFIG.steps[1].title).toContain("modelo");
-    expect(SITE_CONFIG.steps[2].title).toContain("Baixe");
+    expect(SITE_CONFIG.steps[0].title).toBe("Preencha seus dados");
+    expect(SITE_CONFIG.steps[1].title).toBe("Organize seu currículo");
+    expect(SITE_CONFIG.steps[2].title).toBe("Gere e baixe seu PDF");
+  });
+
+  it("deve conter a seção de dados e segurança com transparência técnica", () => {
+    expect(SITE_CONFIG.dataSecurity).toBeDefined();
+    expect(SITE_CONFIG.dataSecurity.length).toBeGreaterThanOrEqual(4);
+    const storageItem = SITE_CONFIG.dataSecurity.find((i) => i.title.toLowerCase().includes("onde ficam"));
+    expect(storageItem?.text).toContain("navegador");
   });
 
   it("deve manter conformidade com LGPD sem promessas indefensáveis de 'privacidade absoluta'", () => {
-    // A promessa técnica verificável é: não armazena currículos nem dados pessoais após a sessão
     const privacyFaq = SITE_CONFIG.faqs.find((f) =>
-      f.question.toLowerCase().includes("privacidade") || f.question.toLowerCase().includes("dados")
+      f.question.toLowerCase().includes("dados do meu currículo")
     );
     expect(privacyFaq).toBeDefined();
-    expect(privacyFaq?.answer).toContain("não são armazenados");
+    expect(privacyFaq?.answer).toContain("não são armazenados em banco de dados");
     expect(privacyFaq?.answer).not.toContain("privacidade absoluta");
+  });
+
+  it("deve conter FAQs sobre outro nome no Pix, comprovante bancário e aprovação", () => {
+    const pixNameFaq = SITE_CONFIG.faqs.find((f) => f.question.includes("outro nome no Pix"));
+    const approvalFaq = SITE_CONFIG.faqs.find((f) => f.question.includes("pagamento foi aprovado"));
+    const receiptFaq = SITE_CONFIG.faqs.find((f) => f.question.includes("comprovante bancário"));
+
+    expect(pixNameFaq).toBeDefined();
+    expect(approvalFaq).toBeDefined();
+    expect(receiptFaq).toBeDefined();
   });
 
   it("deve mapear os 5 modelos de currículo para navegação na landing page", () => {

@@ -21,8 +21,8 @@ export const SITE_CONFIG = {
       icon: "ShieldOff",
     },
     {
-      title: "Sem armazenamento de dados pessoais",
-      description: "Seu currículo não é armazenado em banco de dados permanente. Seus dados permanecem apenas na memória do seu navegador.",
+      title: "Seu currículo fica no seu navegador",
+      description: "O FastCurrículo não grava seu currículo em banco de dados. O rascunho fica salvo no próprio navegador até você limpar os dados.",
       icon: "Lock",
     },
     {
@@ -49,28 +49,75 @@ export const SITE_CONFIG = {
   steps: [
     {
       step: 1,
-      title: "Organize suas informações",
-      description: "Opte pelo Modo Simples ou Completo e preencha seus dados em um formulário intuitivo.",
+      title: "Preencha seus dados",
+      description: "Informe suas experiências profissionais, formação, habilidades e demais informações relevantes.",
     },
     {
       step: 2,
-      title: "Escolha seu modelo",
-      description: "Escolha um dos 5 modelos profissionais e ajuste cores e fontes em tempo real.",
+      title: "Organize seu currículo",
+      description: "O FastCurrículo organiza as informações fornecidas e permite preparar um currículo adequado para apresentação profissional.",
     },
     {
       step: 3,
-      title: "Baixe seu currículo",
-      description: "Visualize o resultado em tempo real e exporte seu currículo profissional por apenas R$ 2,99.",
+      title: "Gere e baixe seu PDF",
+      description: "Após concluir as etapas necessárias e cumprir as condições de pagamento aplicáveis, acesse e baixe seu currículo em PDF.",
+    },
+  ],
+  dataSecurity: [
+    {
+      title: "Quais dados pedimos",
+      icon: "FileText",
+      text: "Nome, contato (e-mail, telefone, cidade), objetivo, experiências, formação, habilidades, cursos e idiomas. Só o necessário para montar o currículo. Não pedimos CPF, RG nem endereço completo.",
+    },
+    {
+      title: "Onde ficam os dados do currículo",
+      icon: "HardDrive",
+      text: "No seu próprio navegador. O FastCurrículo não grava o currículo em banco de dados. O rascunho continua salvo no navegador até você usar a opção \"Limpar dados\".",
+    },
+    {
+      title: "Quando algo sai do seu navegador",
+      icon: "Send",
+      text: "Somente se você usar o aprimoramento de texto: o conteúdo é enviado pelo nosso servidor a um provedor de inteligência artificial para gerar a sugestão. Não guardamos esse texto; o provedor segue a própria política de dados.",
+    },
+    {
+      title: "Dados técnicos do pagamento",
+      icon: "Receipt",
+      text: "São separados do currículo: identificador do pedido, valor, situação e horário. Ficam guardados temporariamente (até 24 horas após a confirmação) para liberar o download. O conteúdo do currículo nunca é enviado à plataforma de pagamento.",
+    },
+    {
+      title: "Como o pagamento é feito",
+      icon: "KeyRound",
+      text: "Por Pix, processado por uma plataforma de pagamentos. O FastCurrículo nunca pede sua senha bancária. Confira o nome do recebedor e o valor no app do seu banco antes de confirmar.",
     },
   ],
   faqs: [
     {
-      question: "Por que apenas R$ 2,99?",
-      answer: "Acreditamos que buscar emprego não deve ser um processo caro. Nosso sistema não tem custos desnecessários com servidores de banco de dados e contas de usuários, permitindo oferecer um valor acessível e justo para todos.",
+      question: "O que é o FastCurrículo?",
+      answer: "É um serviço online que ajuda você a organizar suas informações profissionais e preparar seu currículo.",
     },
     {
-      question: "Meus dados ficam salvos em algum lugar?",
-      answer: "Não! Adotamos uma política estrita de privacidade e zero persistência. Os dados do seu currículo ficam temporariamente apenas na memória do seu navegador e não são armazenados em nenhum banco de dados.",
+      question: "Por que aparece outro nome no Pix?",
+      answer: "O nome exibido pode corresponder ao titular da conta que recebe o pagamento ou aos dados registrados pela instituição financeira. Confira as informações antes de confirmar.",
+    },
+    {
+      question: "Como sei se meu pagamento foi aprovado?",
+      answer: "O FastCurrículo exibirá a confirmação quando o sistema identificar o pagamento como confirmado. Se houver demora, aguarde a atualização do status.",
+    },
+    {
+      question: "O que acontece com os dados do meu currículo?",
+      answer: "Eles ficam salvos no seu navegador e não são armazenados em banco de dados do FastCurrículo. Se você usar o aprimoramento de texto, o conteúdo é enviado a um provedor de IA só para gerar a sugestão. Você pode apagar o rascunho a qualquer momento em \"Limpar dados\".",
+    },
+    {
+      question: "Onde encontro meu comprovante bancário?",
+      answer: "No aplicativo ou canal oficial da instituição financeira utilizada para realizar o pagamento.",
+    },
+    {
+      question: "E se eu pagar e não receber acesso?",
+      answer: "Aguarde alguns instantes pela atualização automática do status e, se o problema persistir, entre em contato pelo canal de suporte oficial: contato@fastcurriculo.com.br.",
+    },
+    {
+      question: "Por que apenas R$ 2,99?",
+      answer: "Acreditamos que buscar emprego não deve ser um processo caro. Nosso sistema não tem custos desnecessários com servidores de banco de dados e contas de usuários, permitindo oferecer um valor acessível e justo para todos.",
     },
     {
       question: "O Fast inventa experiências ou empresas?",

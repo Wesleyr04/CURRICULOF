@@ -15,10 +15,10 @@ export function StepsSection() {
             Simples e Rápido
           </span>
           <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-3">
-            Como funciona em 3 passos
+            Como funciona
           </h2>
           <p className="mt-2 text-slate-600 text-sm">
-            Sem processos complicados ou formulários intermináveis.
+            Três etapas, do preenchimento ao PDF.
           </p>
         </div>
 

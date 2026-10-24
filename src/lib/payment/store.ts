@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { PaymentStatus } from "./types";
-export { FIXED_PRICE_IN_CENTS } from "./factory";
+import { FIXED_PRICE_IN_CENTS } from "./factory";
+export { FIXED_PRICE_IN_CENTS };
 
 export interface EphemeralOrder {
   orderId: string;
@@ -157,7 +158,7 @@ export class EphemeralOrderStore {
 
   syncApprovedOrder(
     paymentId: string,
-    amountInCents: number = 500
+    amountInCents: number = FIXED_PRICE_IN_CENTS
   ): { order: EphemeralOrder; downloadToken: string } {
     let order = this.orders.get(paymentId) || this.getOrderByPaymentId(paymentId);
     if (!order) {
@@ -286,7 +287,7 @@ export class EphemeralOrderStore {
       order = {
         orderId,
         paymentId: orderIdOrPaymentId,
-        amountInCents: 500,
+        amountInCents: FIXED_PRICE_IN_CENTS,
         status: "paid",
         paidAt: now,
         createdAt: now,

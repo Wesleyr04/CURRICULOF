@@ -1,8 +1,19 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { orderStore } from "@/lib/payment/store";
+import { orderStore, EphemeralOrder } from "@/lib/payment/store";
 import { getPaymentGateway } from "@/lib/payment/factory";
+
+/**
+ * Dados não sensíveis do pedido confirmado, lidos exclusivamente do registro do servidor.
+ */
+function confirmedOrderDetails(order: EphemeralOrder) {
+  return {
+    orderId: order.orderId,
+    amountInCents: order.amountInCents,
+    paidAt: order.paidAt ?? null,
+  };
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -25,6 +36,7 @@ export async function GET(req: NextRequest) {
         pago: true,
         status: "approved",
         downloadToken: storedOrder.downloadToken,
+        ...confirmedOrderDetails(storedOrder),
       });
     }
 
@@ -55,6 +67,7 @@ export async function GET(req: NextRequest) {
         pago: true,
         status: "approved",
         downloadToken: paidResult?.downloadToken,
+        ...(paidResult ? confirmedOrderDetails(paidResult.order) : {}),
       });
     }
 

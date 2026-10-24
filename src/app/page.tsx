@@ -4,6 +4,7 @@ import { StepsSection } from "@/components/landing/StepsSection";
 import { BenefitsSection } from "@/components/landing/BenefitsSection";
 import { ModelsPreviewSection } from "@/components/landing/ModelsPreviewSection";
 import { FaqSection } from "@/components/landing/FaqSection";
+import { DataSecuritySection } from "@/components/landing/DataSecuritySection";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, FileText } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
@@ -19,6 +20,9 @@ export default function HomePage() {
 
       {/* 3. Benefícios */}
       <BenefitsSection />
+
+      {/* 3.1 Seus dados e sua segurança */}
+      <DataSecuritySection />
 
       {/* 4. Conheça os Modelos (Vitrine Editorial Fiel ao PDF) */}
       <ModelsPreviewSection />
