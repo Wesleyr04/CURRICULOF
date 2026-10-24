@@ -37,7 +37,6 @@ describe("Transparência, Aviso Pré-Pagamento e Confirmação Visual", () => {
   it("FAQs obrigatórias da especificação 2.5 devem estar presentes com respostas fiéis", () => {
     const requiredQuestions = [
       "O que é o FastCurrículo?",
-      "Por que aparece outro nome no Pix?",
       "Como sei se meu pagamento foi aprovado?",
       "O que acontece com os dados do meu currículo?",
       "Onde encontro meu comprovante bancário?",
@@ -49,6 +48,9 @@ describe("Transparência, Aviso Pré-Pagamento e Confirmação Visual", () => {
       expect(found, `FAQ ausente: "${q}"`).toBeDefined();
       expect(found?.answer.length).toBeGreaterThan(15);
     }
+
+    const pixNameFaq = SITE_CONFIG.faqs.find((f) => f.question.includes("outro nome no Pix"));
+    expect(pixNameFaq).toBeUndefined();
   });
 
   it("/api/pix/status deve retornar dados verificados e não sensíveis quando a ordem for aprovada", async () => {

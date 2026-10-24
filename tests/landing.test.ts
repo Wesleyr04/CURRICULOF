@@ -48,12 +48,12 @@ describe("Landing Page — Copywriting e Posicionamento", () => {
     expect(privacyFaq?.answer).not.toContain("privacidade absoluta");
   });
 
-  it("deve conter FAQs sobre outro nome no Pix, comprovante bancário e aprovação", () => {
+  it("deve conter FAQs sobre comprovante bancário e aprovação, sem menção a outro nome no Pix", () => {
     const pixNameFaq = SITE_CONFIG.faqs.find((f) => f.question.includes("outro nome no Pix"));
     const approvalFaq = SITE_CONFIG.faqs.find((f) => f.question.includes("pagamento foi aprovado"));
     const receiptFaq = SITE_CONFIG.faqs.find((f) => f.question.includes("comprovante bancário"));
 
-    expect(pixNameFaq).toBeDefined();
+    expect(pixNameFaq).toBeUndefined();
     expect(approvalFaq).toBeDefined();
     expect(receiptFaq).toBeDefined();
   });

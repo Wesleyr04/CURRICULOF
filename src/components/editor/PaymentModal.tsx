@@ -23,7 +23,6 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
-import { PixPayeeNotice } from "./PixPayeeNotice";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -617,9 +616,6 @@ export function PaymentModal({
                   </button>
                 </div>
               </div>
-
-              {/* Aviso Obrigatório Pré-Pagamento (Pix / Pessoa Física) */}
-              <PixPayeeNotice />
 
               {/* Indicador "Aguardando confirmação do pagamento" com Reconsulta Manual */}
               <div className="flex items-center justify-between p-2.5 bg-slate-100/90 border border-slate-200 rounded-xl">

@@ -26,7 +26,6 @@ import {
 import { SITE_CONFIG } from "@/config/site";
 import { validateResumeForExport, isAiRefusal } from "@/lib/security/content-guard";
 import { sanitizeAiErrorMessage } from "@/lib/ai/errors";
-import { PixPayeeNotice } from "@/components/editor/PixPayeeNotice";
 
 interface Step6Props {
   resumeData: ResumeData;
@@ -804,10 +803,6 @@ export function Step6Review({
                   </button>
                 </div>
               )}
-
-              <div className="pt-2">
-                <PixPayeeNotice />
-              </div>
 
               <div className="pt-2">
                 <button

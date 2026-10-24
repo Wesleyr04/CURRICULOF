@@ -87,17 +87,13 @@ export const SITE_CONFIG = {
     {
       title: "Como o pagamento é feito",
       icon: "KeyRound",
-      text: "Por Pix, processado por uma plataforma de pagamentos. O FastCurrículo nunca pede sua senha bancária. Confira o nome do recebedor e o valor no app do seu banco antes de confirmar.",
+      text: "Por Pix, processado por uma plataforma de pagamentos. O FastCurrículo nunca pede sua senha bancária. Confira o valor no app do seu banco antes de confirmar.",
     },
   ],
   faqs: [
     {
       question: "O que é o FastCurrículo?",
       answer: "É um serviço online que ajuda você a organizar suas informações profissionais e preparar seu currículo.",
-    },
-    {
-      question: "Por que aparece outro nome no Pix?",
-      answer: "O nome exibido pode corresponder ao titular da conta que recebe o pagamento ou aos dados registrados pela instituição financeira. Confira as informações antes de confirmar.",
     },
     {
       question: "Como sei se meu pagamento foi aprovado?",
