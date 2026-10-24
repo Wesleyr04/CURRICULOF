@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ valid: false, error: "Token ausente ou inválido." }, { status: 400 });
     }
 
-    const isValid = orderStore.verifyDownloadToken(token);
+    const isValid = await orderStore.verifyDownloadTokenAsync(token);
 
     return NextResponse.json({
       valid: isValid,

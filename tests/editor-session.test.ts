@@ -23,7 +23,7 @@ class LocalStorageMock {
 const storageInstance = new LocalStorageMock();
 (globalThis as unknown as { localStorage: LocalStorageMock }).localStorage = storageInstance;
 
-describe("Persistência de Sessão de Pagamento (R$ 5,00 / 24h) e Desacoplamento do Editor", () => {
+describe("Persistência de Sessão de Pagamento (R$ 2,99 / 24h) e Desacoplamento do Editor", () => {
   beforeEach(() => {
     storageInstance.clear();
   });

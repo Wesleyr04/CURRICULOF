@@ -75,7 +75,7 @@ body {
   }
 
   body:not(.is-paid)::before {
-    content: "Pagamento Pendente: O download e a impressão em alta resolução são liberados após a confirmação do Pix de R$ 5,00 no FastCurrículo.";
+    content: "Pagamento Pendente: O download e a impressão em alta resolução são liberados após a confirmação do Pix de R$ 2,99 no FastCurrículo.";
     display: block !important;
     font-family: system-ui, -apple-system, sans-serif;
     font-size: 14pt;

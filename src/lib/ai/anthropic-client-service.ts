@@ -194,9 +194,13 @@ export class AnthropicClientService implements IAIService {
     const startTime = Date.now();
     const effectiveCorrelationId = correlationId || crypto.randomUUID();
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
     try {
       const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
+        signal: controller.signal,
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json",
@@ -314,6 +318,8 @@ export class AnthropicClientService implements IAIService {
         });
       }
       throw error;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
@@ -563,7 +569,7 @@ export class AnthropicClientService implements IAIService {
       );
     }
 
-    // 2. Aprimora atividades de cada experiência em paralelo resiliente (reduz latência na Vercel e evita timeouts)
+    // 2. Aprimora atividades de cada experiência em paralelo resiliente (reduz latência serverless e evita timeouts)
     const expPromises = updated.experiences.map(async (exp) => {
       if (exp.role) {
         exp.role = normalizeJobTitle(exp.role);

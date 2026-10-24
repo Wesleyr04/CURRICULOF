@@ -1,7 +1,7 @@
 # FastCurrículo — Criador Rápido de Currículos Profissionais
 
 > **Proposta de Valor:** "Você informa seus dados. O Fast organiza suas experiências. Você recebe um currículo profissional pronto para enviar."
-> **Preço Unitário:** R$ 5,00 por currículo via Pix • **Sem cadastro** • **Zero armazenamento permanente de currículos**.
+> **Preço Unitário:** R$ 2,99 por currículo via Pix • **Sem cadastro** • **Zero armazenamento permanente de currículos**.
 
 ---
 
@@ -12,7 +12,7 @@ O **FastCurrículo** é uma plataforma web construída com foco em simplicidade,
 ### Destaques Arquiteturais:
 - **Zero Persistência de Currículos:** Não há banco de dados de currículos, nem cadastro de usuários. As informações permanecem estritamente na memória volátil do navegador do usuário durante a sessão.
 - **Camada de IA Desacoplada (`IAIService`):** Suporta Google Gemini (`gemini-2.5-flash`), OpenAI (`gpt-4o-mini`), e provedor `MockAIService` para testes locais sem custo. A IA é ativada apenas sob demanda e possui restrições estritas contra invenção de dados ou alucinações.
-- **Camada de Pagamento Segura (`IPaymentGateway`):** Preço de R$ 5,00 estritamente fixado no servidor backend. Suporta Asaas Pix, Mercado Pago Pix e MockPix para desenvolvimento e testes automatizados.
+- **Camada de Pagamento Desacoplada (`IPaymentGateway`):** Preço de R$ 2,99 estritamente fixado no servidor backend. Arquitetura desacoplada com falha controlada (HTTP 501 Not Implemented) até a ativação de um provedor específico.
 - **Exportação Fiel em PDF A4:** Suporte duplo via renderização client-side (`html2canvas` + `jsPDF`) e visualização com regras CSS `@media print` para impressão vetorial direta em folha A4.
 - **5 Layouts Profissionais Distintos:**
   1. **Clássico ATS:** Coluna única, linear, sem elementos gráficos distorcidos, alta compatibilidade com robôs de triagem.
@@ -35,7 +35,7 @@ d:/Projetos/CURRICULOFACIL/
 │   │   │   │   ├── improve-text/route.ts      # Aprimoramento pontual de atividades
 │   │   │   │   └── suggest-summary/route.ts   # Sugestão de resumo profissional fundamentado
 │   │   │   └── payment/
-│   │   │       ├── create/route.ts            # Criação de cobrança Pix de R$ 5,00 fixada no servidor
+│   │   │       ├── create/route.ts            # Criação de cobrança Pix de R$ 2,99 fixada no servidor
 │   │   │       ├── simulate/route.ts          # Simulação de pagamento instantâneo (apenas dev/testes)
 │   │   │       ├── status/route.ts            # Consulta de status e emissão de downloadToken efêmero
 │   │   │       ├── verify-token/route.ts      # Validação de token de download pós-pagamento
@@ -60,7 +60,7 @@ d:/Projetos/CURRICULOFACIL/
 │   │   │   ├── Step4Education.tsx             # Etapa 4: Formação acadêmica
 │   │   │   ├── Step5Skills.tsx                # Etapa 5: Habilidades, cursos, certificações e idiomas
 │   │   │   ├── Step6Review.tsx                # Etapa 6: Revisão, personalização de layout/cores/fontes e IA
-│   │   │   └── PaymentModal.tsx               # Modal de checkout Pix (R$ 5,00), QR code e download do PDF
+│   │   │   └── PaymentModal.tsx               # Modal de checkout Pix (R$ 2,99), QR code e download do PDF
 │   │   ├── landing/
 │   │   │   ├── HeroSection.tsx
 │   │   │   ├── ModelsPreviewSection.tsx
@@ -89,9 +89,7 @@ d:/Projetos/CURRICULOFACIL/
 │   │   │   ├── types.ts                       # Contratos de gateways de pagamento
 │   │   │   ├── store.ts                       # OrderStore efêmero em memória com limpeza automática (TTL 15 min)
 │   │   │   ├── mock-gateway.ts                # Provedor Pix Simulado para testes
-│   │   │   ├── asaas-gateway.ts               # Provedor Asaas Pix
-│   │   │   ├── mercadopago-gateway.ts         # Provedor Mercado Pago Pix
-│   │   │   └── factory.ts                     # Fábrica com valor fixado em 50 centavos no servidor
+│   │   │   └── factory.ts                     # Fábrica desacoplada com falha controlada (HTTP 501)
 │   │   ├── pdf/
 │   │   │   └── generate-pdf.ts                # Utilitário de geração de PDF A4 em 300dpi e print nativo
 │   │   ├── schema/
@@ -153,51 +151,38 @@ cp .env.example .env.local
 
 | Variável | Padrão | Descrição |
 |---|---|---|
-| `AI_PROVIDER` | `mock` | Provedor de IA ativo (`mock`, `gemini` ou `openai`) |
+| `AI_PROVIDER` | `anthropic` | Provedor de IA ativo (`anthropic`, `mock`, `gemini` ou `openai`) |
+| `ANTHROPIC_API_KEY` | *(recomendado)* | Chave de API da Anthropic Claude |
+| `ANTHROPIC_MODEL` | `claude-3-5-haiku-20241022` | Modelo oficial Anthropic |
 | `GEMINI_API_KEY` | *(opcional)* | Chave de API do Google Gemini (se `AI_PROVIDER=gemini`) |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Modelo do Google Gemini |
 | `OPENAI_API_KEY` | *(opcional)* | Chave da OpenAI ou Groq (se `AI_PROVIDER=openai`) |
 | `OPENAI_MODEL` | `gpt-4o-mini` | Modelo da OpenAI / Groq |
-| `PAYMENT_GATEWAY` | `mock` | Gateway de pagamento (`mock`, `asaas` ou `mercadopago`) |
-| `ALLOW_MOCK_PAYMENT`| `true` | Habilita botão de simulação nos testes de desenvolvimento |
-| `ASAAS_API_KEY` | *(opcional)* | Token de acesso da API do Asaas |
-| `ASAAS_ENVIRONMENT` | `sandbox` | Ambiente do Asaas (`sandbox` ou `production`) |
-| `MERCADOPAGO_ACCESS_TOKEN` | *(opcional)* | Token privado do Mercado Pago |
 
 ---
 
 ## 5. Conexão com os Provedores
 
-### Conectar Provedor de IA (Google Gemini):
-1. Gere sua chave no [Google AI Studio](https://aistudio.google.com/).
-2. No seu arquivo `.env.local`, configure:
+### Conectar Provedor de IA (Anthropic Claude - Recomendado):
+1. Gere sua chave no [Anthropic Console](https://console.anthropic.com/).
+2. No seu painel da Netlify ou `.env.local`, configure:
    ```env
-   AI_PROVIDER=gemini
-   GEMINI_API_KEY=AIzaSy...sua_chave_aqui
-   GEMINI_MODEL=gemini-2.5-flash
+   AI_PROVIDER=anthropic
+   ANTHROPIC_API_KEY=sk-ant-...sua_chave_aqui
+   ANTHROPIC_MODEL=claude-3-5-haiku-20241022
    ```
-3. A aplicação utilizará chamadas diretas REST com baixa temperatura (0.3) e validação dos dados de saída no servidor via Zod.
 
-### Conectar Provedor de Pagamentos (Asaas Pix — Recomendado para R$ 5,00):
-1. O Asaas é o gateway mais economicamente viável para Pix de R$ 5,00 no Brasil, pois permite transferências com taxas fixas reduzidas.
-2. No seu `.env.local`:
-   ```env
-   PAYMENT_GATEWAY=asaas
-   ASAAS_API_KEY=$aact_...sua_chave_aqui
-   ASAAS_ENVIRONMENT=production
-   ASAAS_WEBHOOK_SECRET=seu_segredo_de_webhook
-   ```
-3. Configure o webhook do Asaas apontando para: `https://seu-dominio.com.br/api/payment/webhook`.
+### Camada de Pagamentos (Desacoplamento e Falha Controlada):
+A camada de pagamentos segue a interface `IPaymentGateway` e adota o padrão de falha controlada (HTTP 501 Not Implemented) até a definição e integração de um novo provedor oficial, garantindo que nenhuma transação falsa ou mock seja aprovada em produção.
 
 ---
 
-## 6. Estimativa de Custos Operacionais (Viabilidade de R$ 5,00)
+## 6. Estimativa de Custos Operacionais (Viabilidade de R$ 2,99)
 
-| Componente | Provedor Selecionado | Custo Estimado por Currículo | Margem com Preço de R$ 5,00 |
+| Componente | Provedor Selecionado | Custo Estimado por Currículo | Margem com Preço de R$ 2,99 |
 |---|---|---|---|
-| **Inteligência Artificial** | Google Gemini 2.5 Flash (~400 tokens) | R$ 0,001 a R$ 0,003 | ~R$ 4,70 |
-| **Gateway Pix** | Asaas Pix (taxa fixa pacote PJ) | R$ 0,15 a R$ 0,25 | ~R$ 4,75 a R$ 4,85 |
-| **Infraestrutura Web** | Vercel / Cloudflare Pages / Railway | R$ 0,00 (camada gratuita / serverless) | - |
+| **Inteligência Artificial** | Claude 3.5 Haiku (~400 tokens) | R$ 0,002 a R$ 0,004 | ~R$ 2,70 |
+| **Infraestrutura Web** | Netlify Serverless Functions / CDN | R$ 0,00 (camada gratuita / serverless) | - |
 | **Banco de Dados** | Nenhum (Arquitetura Zero Persistência) | R$ 0,00 | - |
 | **Resultado Líquido** | — | **Margem de ~90% a 95% por unidade** | **Economicamente sustentável** |
 
@@ -206,39 +191,13 @@ cp .env.example .env.local
 ## 7. Relatório de Testes Executados
 
 Execução realizada através do runner Vitest (`npm test`):
-- **Total de Testes:** 17 testes executados.
-- **Aprovados:** 17 testes (100% PASS).
-- **Tempo de Execução:** ~2.14 segundos.
-
-### Detalhamento dos Testes:
-1. `tests/layouts.test.ts`:
-   - Validação da existência dos 5 layouts distintos obrigatórios.
-   - Validação de que todos os 5 layouts utilizam exatamente o mesmo modelo de dados `ResumeData`.
-   - Validação da flag `atsFriendly` no layout Clássico ATS.
-2. `tests/schema.test.ts`:
-   - Validação do schema Zod completo com dados iniciais.
-   - Validação de currículo sem experiência profissional (Primeiro Emprego).
-   - Validação de tolerância a campos opcionais (LinkedIn, portfólio).
-   - Validação de rejeição de e-mail mal formatado e cor inválida.
-3. `tests/ai.test.ts`:
-   - Validação de geração de resumo com dados de experiências reais.
-   - Validação de resumo adaptado para iniciantes sem experiências formais.
-   - Validação de melhoria sintática garantindo maiúsculas e pontuação.
-   - Validação de que a IA **não inventa nem altera empresas e cargos originais**.
-4. `tests/payment.test.ts`:
-   - Validação de que o valor unitário no backend é estritamente **500 centavos (R$ 5,00)**.
-   - Validação do ciclo de criação de ordem efêmera em memória volátil.
-   - Validação de transição de status para `paid` e emissão do `downloadToken`.
-   - Validação de rejeição de token falso e bloqueio de mock em produção.
+- Suíte completa de testes unitários e de integração de ponta a ponta.
+- Testes cobrindo layouts, geração de resumo, contratos de payload e falha controlada 501 da camada de pagamento.
 
 ---
 
-## 8. Checklist de Implantação em Produção
+## 8. Checklist de Implantação em Produção na Netlify
 
-- [ ] Definir `NODE_ENV=production` nas variáveis de ambiente do servidor.
-- [ ] Definir `ALLOW_MOCK_PAYMENT=false` para impedir simulações de pagamento em ambiente público.
-- [ ] Inserir credenciais válidas do gateway de pagamento (`ASAAS_API_KEY` ou `MERCADOPAGO_ACCESS_TOKEN`).
-- [ ] Configurar a URL pública do Webhook no painel do gateway com chave secreta HMAC.
-- [ ] Inserir credencial de IA do servidor (`GEMINI_API_KEY` ou `OPENAI_API_KEY`).
-- [ ] Garantir certificado SSL/HTTPS ativo para toda a aplicação.
-- [ ] Realizar teste de ponta a ponta com pagamento real de R$ 5,00 e conferir o download do PDF.
+- [ ] Definir `NODE_ENV=production` nas variáveis de ambiente da Netlify.
+- [ ] Inserir credencial de IA do servidor (`ANTHROPIC_API_KEY`).
+- [ ] Verificar certificados e domínio configurados na Netlify.

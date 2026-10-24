@@ -1,103 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
+import { getPaymentGateway, FIXED_PRICE_IN_CENTS } from "@/lib/payment/factory";
 import { orderStore } from "@/lib/payment/store";
-import { FIXED_PRICE_IN_CENTS } from "@/lib/payment/factory";
 
 export async function POST(req: NextRequest) {
   try {
     await req.json().catch(() => ({}));
 
-    // Leitura direta da variável de ambiente do Mercado Pago (suporta MP_ACCESS_TOKEN, MERCADOPAGO_ACCESS_TOKEN e NEXT_PUBLIC_MP_ACCESS_TOKEN)
-    const rawToken =
-      process.env.MP_ACCESS_TOKEN ||
-      process.env.MERCADOPAGO_ACCESS_TOKEN ||
-      process.env.NEXT_PUBLIC_MP_ACCESS_TOKEN;
-    const accessToken = typeof rawToken === "string" ? rawToken.trim() : "";
+    // Tenta obter o provedor de pagamento desacoplado
+    let gateway;
+    try {
+      gateway = getPaymentGateway();
+    } catch (configErr) {
+      const msg =
+        configErr instanceof Error
+          ? configErr.message
+          : "501 Not Implemented: Provedor de pagamento pendente.";
 
-    // Log seguro de auditoria para diagnóstico em produção (sem vazar o secret)
-    console.log(
-      "[MP Token Check] Token presente:",
-      !!accessToken,
-      "Tamanho:",
-      accessToken.length,
-      "Prefixo:",
-      accessToken ? accessToken.substring(0, 6) + "..." : "VAZIO"
-    );
-
-    if (!accessToken) {
+      const is501 = msg.includes("501");
       return NextResponse.json(
         {
-          error:
-            "O token de acesso do Mercado Pago não está configurado nas variáveis de ambiente do servidor. Verifique se a variável MP_ACCESS_TOKEN ou MERCADOPAGO_ACCESS_TOKEN foi definida no painel de deploy.",
+          error: msg,
         },
-        { status: 401 }
+        { status: is501 ? 501 : 503 }
       );
     }
 
-    const idempotencyKey = crypto.randomUUID();
     const priceInReais = Number((FIXED_PRICE_IN_CENTS / 100).toFixed(2));
+    const tempPaymentId = `temp_${Date.now()}`;
+    const order = orderStore.createOrder(tempPaymentId, FIXED_PRICE_IN_CENTS);
 
-    // Chamada oficial à API de pagamentos do Mercado Pago para Pix
-    const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "X-Idempotency-Key": idempotencyKey,
-      },
-      body: JSON.stringify({
-        transaction_amount: priceInReais,
-        description: "Liberação de Currículo em PDF - FastCurrículo",
-        payment_method_id: "pix",
-        payer: {
-          email: "cliente@fastcurriculo.com",
-        },
-      }),
-      cache: "no-store",
+    const result = await gateway.createPayment({
+      orderId: order.orderId,
+      amountInCents: FIXED_PRICE_IN_CENTS,
+      description: "Liberação de Currículo em PDF - FastCurrículo",
     });
 
-    const data = await mpResponse.json().catch(() => ({}));
-
-    if (!mpResponse.ok) {
-      console.error("[Mercado Pago API Error]", mpResponse.status, data);
-
-      const causeMsg = Array.isArray(data.cause)
-        ? data.cause
-            .map((c: { description?: string; code?: string | number }) => c?.description || String(c?.code || ""))
-            .filter(Boolean)
-            .join("; ")
-        : "";
-
-      const errorMessage = causeMsg
-        ? `${data.message || "Erro ao gerar Pix no Mercado Pago"} (${causeMsg})`
-        : (data.message || "Erro ao gerar Pix no Mercado Pago.");
-
-      return NextResponse.json(
-        { error: errorMessage, details: data },
-        { status: mpResponse.status >= 400 && mpResponse.status < 600 ? mpResponse.status : 502 }
-      );
-    }
-
-    const paymentId = String(data.id);
-    const poi = data.point_of_interaction?.transaction_data;
-    const qrCode = poi?.qr_code || "";
-    const qrCodeBase64 = poi?.qr_code_base64 || "";
-    const ticketUrl = poi?.ticket_url || "";
-
-    // Registra na store efêmera para garantir fluxo de verificação de status e download
-    const ephemeralOrder = orderStore.createOrder(paymentId, FIXED_PRICE_IN_CENTS);
-    ephemeralOrder.paymentId = paymentId;
+    order.paymentId = result.paymentId;
+    await orderStore.updateOrderPaymentId(order.orderId, result.paymentId);
 
     return NextResponse.json(
       {
         success: true,
-        id: paymentId,
-        status: data.status || "pending",
-        transaction_amount: data.transaction_amount || priceInReais,
-        qr_code: qrCode,
-        qr_code_base64: qrCodeBase64,
-        ticket_url: ticketUrl,
-        point_of_interaction: data.point_of_interaction,
+        id: result.paymentId,
+        orderId: order.orderId,
+        status: result.status || "pending",
+        transaction_amount: priceInReais,
+        qr_code: result.qrCodeText,
+        qr_code_base64: result.qrCodeBase64 || "",
+        ticket_url: "",
       },
       {
         headers: {
@@ -106,11 +56,14 @@ export async function POST(req: NextRequest) {
       }
     );
   } catch (error: unknown) {
-    const errorMsg = error instanceof Error ? error.message : "Erro de conexão";
-    console.error("[API /api/pix/criar Error]", error);
+    const errorMsg =
+      error instanceof Error ? error.message : "Erro ao processar pagamento.";
+    console.error("[API /api/pix/criar Error]", errorMsg);
+
+    const is501 = errorMsg.includes("501");
     return NextResponse.json(
-      { error: "Erro interno ao processar pagamento: " + errorMsg },
-      { status: 500 }
+      { error: errorMsg },
+      { status: is501 ? 501 : 500 }
     );
   }
 }

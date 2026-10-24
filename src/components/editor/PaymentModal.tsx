@@ -103,7 +103,7 @@ export function PaymentModal({
       }
 
       if (!data.qr_code && !data.qr_code_base64) {
-        throw new Error("O Mercado Pago não retornou dados válidos de Pix. Verifique as credenciais da conta.");
+        throw new Error("O serviço de pagamento não retornou dados válidos de Pix. Verifique as credenciais da conta.");
       }
 
       setOrderData({
@@ -117,7 +117,7 @@ export function PaymentModal({
     } catch (err: unknown) {
       console.error("[Pix Modal Error]", err);
       const errorMessage =
-        err instanceof Error ? err.message : "Erro ao conectar com a API do Mercado Pago.";
+        err instanceof Error ? err.message : "Erro ao conectar com o serviço de pagamento Pix.";
       setError(errorMessage);
       setLoading(false);
     }
@@ -344,7 +344,7 @@ export function PaymentModal({
             <div className="py-12 text-center space-y-3">
               <Loader2 className="w-8 h-8 animate-spin text-emerald-700 mx-auto" />
               <p className="text-xs text-slate-600 font-medium">
-                Conectando ao Mercado Pago e gerando cobrança Pix...
+                Gerando cobrança Pix segura...
               </p>
             </div>
           ) : error ? (
@@ -355,13 +355,13 @@ export function PaymentModal({
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-rose-900">
-                  Falha ao gerar cobrança no Mercado Pago
+                  Falha ao gerar cobrança Pix
                 </h4>
                 <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-left text-xs font-mono text-rose-800 break-words max-h-36 overflow-y-auto">
                   {error}
                 </div>
                 <p className="text-[11px] text-slate-500 pt-1">
-                  Verifique se a variável <code>MP_ACCESS_TOKEN</code> ou <code>MERCADOPAGO_ACCESS_TOKEN</code> no painel de deploy possui credenciais válidas de produção para Pix.
+                  Provedor de pagamento pendente de ativação no ambiente do servidor.
                 </p>
               </div>
               <div className="flex gap-2 justify-center pt-2">
@@ -383,7 +383,7 @@ export function PaymentModal({
               </div>
             </div>
           ) : (
-            /* Tela do QR Code Pix Real do Mercado Pago */
+            /* Tela do QR Code Pix */
             <div className="space-y-4">
               {/* Valor e Validade */}
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
@@ -401,12 +401,12 @@ export function PaymentModal({
                 </div>
               </div>
 
-              {/* QR Code Real em Imagem Base64 gerada pelo Mercado Pago */}
+              {/* QR Code Pix em Imagem Base64 gerada pelo Provedor */}
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col items-center justify-center">
                 {orderData?.qrCodeBase64 && (
                   <img
                     src={`data:image/png;base64,${orderData.qrCodeBase64}`}
-                    alt="QR Code Pix Mercado Pago"
+                    alt="QR Code Pix"
                     className="w-52 h-52 rounded-lg shadow-xs bg-white p-2 border border-slate-200"
                   />
                 )}

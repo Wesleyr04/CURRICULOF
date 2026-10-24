@@ -19,9 +19,9 @@ describe("Landing Page — Copywriting e Posicionamento", () => {
     expect(SITE_CONFIG.description).not.toContain("deixe a IA ajudar");
   });
 
-  it("deve destacar o modelo comercial de R$ 5,00 pagamento único sem mensalidade", () => {
-    expect(SITE_CONFIG.pricing.amountInCents).toBe(500);
-    expect(SITE_CONFIG.pricing.formatted).toBe("R$ 5,00");
+  it("deve destacar o modelo comercial de R$ 2,99 pagamento único sem mensalidade", () => {
+    expect(SITE_CONFIG.pricing.amountInCents).toBe(299);
+    expect(SITE_CONFIG.pricing.formatted).toBe("R$ 2,99");
     expect(SITE_CONFIG.pricing.period).toBe("pagamento único");
   });
 

@@ -188,25 +188,10 @@ describe("Correções de Produção - 5 Problemas Reais de UX/Mobile/IA", () => 
     });
   });
 
-  describe("4. Compatibilidade de Credenciais do Mercado Pago", () => {
-    it("deve aceitar MP_ACCESS_TOKEN", async () => {
-      process.env.MP_ACCESS_TOKEN = "TEST-1234567890";
-      delete process.env.MERCADOPAGO_ACCESS_TOKEN;
-      delete process.env.NEXT_PUBLIC_MP_ACCESS_TOKEN;
-
-      const { MercadoPagoGateway } = await import("@/lib/payment/mercadopago-gateway");
-      const gateway = new MercadoPagoGateway();
-      expect(gateway.name).toContain("Mercado Pago");
-    });
-
-    it("deve aceitar MERCADOPAGO_ACCESS_TOKEN", async () => {
-      delete process.env.MP_ACCESS_TOKEN;
-      process.env.MERCADOPAGO_ACCESS_TOKEN = "TEST-MERCADOPAGO-123";
-      delete process.env.NEXT_PUBLIC_MP_ACCESS_TOKEN;
-
-      const { MercadoPagoGateway } = await import("@/lib/payment/mercadopago-gateway");
-      const gateway = new MercadoPagoGateway();
-      expect(gateway.name).toContain("Mercado Pago");
+  describe("4. Desacoplamento Estrito de Pagamento", () => {
+    it("getPaymentGateway deve lançar a exceção '501 Not Implemented: Provedor de pagamento pendente.' confirmando a ausência de provedor", async () => {
+      const { getPaymentGateway } = await import("@/lib/payment/factory");
+      expect(() => getPaymentGateway()).toThrow("501 Not Implemented: Provedor de pagamento pendente.");
     });
   });
 });

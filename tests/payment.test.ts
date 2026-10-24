@@ -3,28 +3,22 @@ import { FIXED_PRICE_IN_CENTS, getPaymentGateway } from "@/lib/payment/factory";
 import { orderStore } from "@/lib/payment/store";
 import { MockPixGateway } from "@/lib/payment/mock-gateway";
 
-describe("Segurança Financeira e Camada de Pagamentos (R$ 5,00)", () => {
-  it("o preço unitário no backend deve ser estritamente fixado em 500 centavos (R$ 5,00)", () => {
-    expect(FIXED_PRICE_IN_CENTS).toBe(500);
+describe("Segurança Financeira e Camada de Pagamentos (R$ 2,99)", () => {
+  it("o preço unitário no backend deve ser estritamente fixado em 299 centavos (R$ 2,99)", () => {
+    expect(FIXED_PRICE_IN_CENTS).toBe(299);
   });
 
-  it("deve criar uma ordem efêmera sem vincular conteúdo ou dados pessoais do currículo", async () => {
-    const gateway = getPaymentGateway();
+  it("deve criar uma ordem efêmera sem vincular conteúdo ou dados pessoais do currículo", () => {
     const tempPaymentId = `test_pay_${Date.now()}`;
     const order = orderStore.createOrder(tempPaymentId, FIXED_PRICE_IN_CENTS);
 
     expect(order.orderId).toBeTruthy();
-    expect(order.amountInCents).toBe(500);
+    expect(order.amountInCents).toBe(299);
     expect(order.status).toBe("pending");
+  });
 
-    const paymentResult = await gateway.createPayment({
-      orderId: order.orderId,
-      amountInCents: FIXED_PRICE_IN_CENTS,
-      description: "Teste Unitário",
-    });
-
-    expect(paymentResult.amountInCents).toBe(500);
-    expect(paymentResult.qrCodeText).toBeTruthy();
+  it("getPaymentGateway deve lançar exclusivamente '501 Not Implemented: Provedor de pagamento pendente.'", () => {
+    expect(() => getPaymentGateway()).toThrow("501 Not Implemented: Provedor de pagamento pendente.");
   });
 
   it("deve transicionar status para paid e emitir downloadToken autêntico", () => {
@@ -72,7 +66,7 @@ describe("Segurança Financeira e Camada de Pagamentos (R$ 5,00)", () => {
     const success = await downloadReceiptPdf({
       orderId: "ord_test_isolation_123",
       paymentId: "pay_test_456",
-      formattedAmount: "R$ 5,00",
+      formattedAmount: "R$ 2,99",
       paidAt: Date.now(),
       downloadToken: "dl_token_valido_xyz",
     });
@@ -229,129 +223,15 @@ describe("Segurança Financeira e Camada de Pagamentos (R$ 5,00)", () => {
     }
   });
 
-  describe("Integração Pix (/api/pix/*)", () => {
-    it("/api/pix/criar deve retornar 401 quando os tokens de acesso não estiverem configurados", async () => {
+  describe("Integração Pix Desacoplada e Falha Controlada (/api/pix/* e /api/payment/*)", () => {
+    it("/api/pix/criar deve capturar o erro da factory e responder com HTTP 501 Not Implemented", async () => {
       const { POST } = await import("@/app/api/pix/criar/route");
-      const oldToken = process.env.MP_ACCESS_TOKEN;
-      const oldMpToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+      const req = new Request("http://localhost:3000/api/pix/criar", { method: "POST" });
+      const res = await POST(req as any);
 
-      try {
-        delete process.env.MP_ACCESS_TOKEN;
-        delete process.env.MERCADOPAGO_ACCESS_TOKEN;
-
-        const req = new Request("http://localhost:3000/api/pix/criar", { method: "POST" });
-        const res = await POST(req as any);
-
-        expect(res.status).toBe(401);
-        const data = await res.json();
-        expect(data.error).toContain("O token de acesso do Mercado Pago não está configurado");
-        expect(data.error).toContain("MP_ACCESS_TOKEN ou MERCADOPAGO_ACCESS_TOKEN");
-        expect(data.error).not.toContain("Vercel");
-      } finally {
-        process.env.MP_ACCESS_TOKEN = oldToken;
-        process.env.MERCADOPAGO_ACCESS_TOKEN = oldMpToken;
-      }
-    });
-
-    it("/api/pix/criar deve chamar https://api.mercadopago.com/v1/payments com payload oficial de Pix e retornar dados completos", async () => {
-      const { POST } = await import("@/app/api/pix/criar/route");
-      const oldToken = process.env.MP_ACCESS_TOKEN;
-      process.env.MP_ACCESS_TOKEN = "APP_USR-TESTE-PROD-TOKEN-12345";
-
-      let capturedUrl = "";
-      let capturedMethod = "";
-      let capturedHeaders: any = {};
-      let capturedBody: any = {};
-
-      const originalFetch = global.fetch;
-
-      try {
-        global.fetch = (async (url: string, init: any) => {
-          capturedUrl = url;
-          capturedMethod = init.method;
-          capturedHeaders = init.headers;
-          capturedBody = JSON.parse(init.body);
-
-          return {
-            ok: true,
-            status: 201,
-            json: async () => ({
-              id: 123456789,
-              status: "pending",
-              transaction_amount: 5.00,
-              point_of_interaction: {
-                transaction_data: {
-                  qr_code: "00020126...real_pix_copia_e_cola",
-                  qr_code_base64: "dGVzdGVfcXJfY29kZV9iYXNlNjQ=",
-                  ticket_url: "https://www.mercadopago.com.br/payments/123456789/ticket",
-                },
-              },
-            }),
-          } as Response;
-        }) as any;
-
-        const req = new Request("http://localhost:3000/api/pix/criar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-        const res = await POST(req as any);
-
-        expect(res.status).toBe(200);
-        const data = await res.json();
-
-        expect(capturedUrl).toBe("https://api.mercadopago.com/v1/payments");
-        expect(capturedMethod).toBe("POST");
-        expect(capturedHeaders.Authorization).toBe("Bearer APP_USR-TESTE-PROD-TOKEN-12345");
-        expect(capturedHeaders["X-Idempotency-Key"]).toBeTruthy();
-        expect(capturedBody.transaction_amount).toBe(5.00);
-        expect(capturedBody.payment_method_id).toBe("pix");
-        expect(capturedBody.payer.email).toBe("cliente@fastcurriculo.com");
-
-        expect(data.success).toBe(true);
-        expect(data.id).toBe("123456789");
-        expect(data.qr_code).toBe("00020126...real_pix_copia_e_cola");
-        expect(data.qr_code_base64).toBe("dGVzdGVfcXJfY29kZV9iYXNlNjQ=");
-        expect(data.point_of_interaction?.transaction_data?.qr_code).toBe("00020126...real_pix_copia_e_cola");
-
-        // Confirma registro na store efêmera
-        const stored = orderStore.getOrder("123456789") || orderStore.getOrderByPaymentId("123456789");
-        expect(stored).not.toBeNull();
-      } finally {
-        global.fetch = originalFetch;
-        process.env.MP_ACCESS_TOKEN = oldToken;
-      }
-    });
-
-    it("/api/pix/criar deve propagar mensagem de erro quando a API do Mercado Pago retornar falha", async () => {
-      const { POST } = await import("@/app/api/pix/criar/route");
-      const oldToken = process.env.MP_ACCESS_TOKEN;
-      process.env.MP_ACCESS_TOKEN = "APP_USR-TESTE-PROD-TOKEN-12345";
-
-      const originalFetch = global.fetch;
-
-      try {
-        global.fetch = (async () => {
-          return {
-            ok: false,
-            status: 400,
-            json: async () => ({
-              message: "Invalid parameter",
-              cause: [{ description: "Chave Pix inválida" }],
-            }),
-          } as Response;
-        }) as any;
-
-        const req = new Request("http://localhost:3000/api/pix/criar", { method: "POST" });
-        const res = await POST(req as any);
-
-        expect(res.status).toBe(400);
-        const data = await res.json();
-        expect(data.error).toContain("Invalid parameter");
-        expect(data.error).toContain("Chave Pix inválida");
-      } finally {
-        global.fetch = originalFetch;
-        process.env.MP_ACCESS_TOKEN = oldToken;
-      }
+      expect(res.status).toBe(501);
+      const data = await res.json();
+      expect(data.error).toContain("501 Not Implemented: Provedor de pagamento pendente.");
     });
 
     it("/api/pix/status deve retornar 400 se o parâmetro id estiver ausente", async () => {
@@ -364,90 +244,53 @@ describe("Segurança Financeira e Camada de Pagamentos (R$ 5,00)", () => {
       expect(data.error).toContain("id");
     });
 
-    it("/api/pix/status deve consultar /v1/payments/{id} e retornar pago: true quando status for approved", async () => {
+    it("/api/pix/status deve retornar 501 Not Implemented quando o pagamento não estiver em memória", async () => {
       const { GET } = await import("@/app/api/pix/status/route");
-      const oldToken = process.env.MP_ACCESS_TOKEN;
-      process.env.MP_ACCESS_TOKEN = "TEST_PROD_MP_TOKEN_ABC";
+      const req = new Request("http://localhost:3000/api/pix/status?id=ord_inexistente_123");
+      const res = await GET(req as any);
 
-      // Cria a ordem para que o markAsPaid emita o downloadToken com sucesso
-      orderStore.createOrder("987654321", FIXED_PRICE_IN_CENTS);
-
-      const originalFetch = global.fetch;
-
-      try {
-        global.fetch = (async (url: string) => {
-          if (url.includes("/v1/payments/987654321")) {
-            return {
-              ok: true,
-              status: 200,
-              json: async () => ({
-                id: 987654321,
-                status: "approved",
-              }),
-            } as Response;
-          }
-          return { ok: false, status: 404 } as Response;
-        }) as any;
-
-        const req = new Request("http://localhost:3000/api/pix/status?id=987654321");
-        const res = await GET(req as any);
-
-        expect(res.status).toBe(200);
-        const data = await res.json();
-        expect(data.pago).toBe(true);
-        expect(data.status).toBe("approved");
-        expect(data.downloadToken).toBeTruthy();
-      } finally {
-        global.fetch = originalFetch;
-        process.env.MP_ACCESS_TOKEN = oldToken;
-      }
+      expect(res.status).toBe(501);
+      const data = await res.json();
+      expect(data.error).toContain("501 Not Implemented");
     });
 
-    it("/api/pix/status deve ressincronizar com R$ 5,00 mesmo quando a ordem NÃO existir no orderStore local da Lambda", async () => {
+    it("/api/pix/status deve retornar pago: true se a ordem já estiver paga no orderStore em memória", async () => {
       const { GET } = await import("@/app/api/pix/status/route");
-      const oldToken = process.env.MP_ACCESS_TOKEN;
-      process.env.MP_ACCESS_TOKEN = "TEST_PROD_MP_TOKEN_ABC";
+      const testPaymentId = `mem_paid_${Date.now()}`;
+      const order = orderStore.createOrder(testPaymentId, FIXED_PRICE_IN_CENTS);
+      const paidResult = orderStore.markAsPaid(order.orderId);
 
-      const unseededPaymentId = `serverless_unseeded_${Date.now()}`;
-      // Não cria a ordem no orderStore (simula requisição caindo em outra Lambda)
-      expect(orderStore.getOrderByPaymentId(unseededPaymentId)).toBeUndefined();
+      const req = new Request(`http://localhost:3000/api/pix/status?id=${order.orderId}`);
+      const res = await GET(req as any);
 
-      const originalFetch = global.fetch;
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.pago).toBe(true);
+      expect(data.status).toBe("approved");
+      expect(data.downloadToken).toBe(paidResult?.downloadToken);
+    });
 
-      try {
-        global.fetch = (async (url: string) => {
-          if (url.includes(`/v1/payments/${unseededPaymentId}`)) {
-            return {
-              ok: true,
-              status: 200,
-              json: async () => ({
-                id: unseededPaymentId,
-                status: "approved",
-              }),
-            } as Response;
-          }
-          return { ok: false, status: 404 } as Response;
-        }) as any;
+    it("/api/payment/create deve responder com HTTP 501 Not Implemented", async () => {
+      const { POST } = await import("@/app/api/payment/create/route");
+      const req = new Request("http://localhost:3000/api/payment/create", { method: "POST" });
+      const res = await POST(req as any);
 
-        const req = new Request(`http://localhost:3000/api/pix/status?id=${unseededPaymentId}`);
-        const res = await GET(req as any);
+      expect(res.status).toBe(501);
+      const data = await res.json();
+      expect(data.error).toContain("501 Not Implemented: Provedor de pagamento pendente.");
+    });
 
-        expect(res.status).toBe(200);
-        const data = await res.json();
-        expect(data.pago).toBe(true);
-        expect(data.status).toBe("approved");
-        expect(data.downloadToken).toBeTruthy();
+    it("/api/payment/webhook deve responder com HTTP 501 Not Implemented", async () => {
+      const { POST } = await import("@/app/api/payment/webhook/route");
+      const req = new Request("http://localhost:3000/api/payment/webhook", {
+        method: "POST",
+        body: JSON.stringify({ event: "PAYMENT_RECEIVED" }),
+      });
+      const res = await POST(req as any);
 
-        // Verifica que a store efêmera agora possui o registro recuperado com R$ 5,00 (500 centavos)
-        const restored = orderStore.getOrderByPaymentId(unseededPaymentId);
-        expect(restored).toBeDefined();
-        expect(restored?.amountInCents).toBe(500);
-        expect(restored?.status).toBe("paid");
-        expect(restored?.downloadToken).toBe(data.downloadToken);
-      } finally {
-        global.fetch = originalFetch;
-        process.env.MP_ACCESS_TOKEN = oldToken;
-      }
+      expect(res.status).toBe(501);
+      const data = await res.json();
+      expect(data.error).toContain("501 Not Implemented: Provedor de pagamento pendente.");
     });
   });
 });

@@ -25,7 +25,9 @@ function EditorContent() {
     setCurrentStep,
     isPaid,
     setIsPaid,
+    downloadToken,
     setPaymentSession,
+    clearPaymentSession,
     registerDownloadTrigger,
   } = useEditor();
 
@@ -61,20 +63,53 @@ function EditorContent() {
     isHydratedRef.current = true;
 
     try {
-      // 1.1 Restauração da Sessão de Pagamento ativa no cliente (24 horas de validade)
+      // 1.1 Restauração da Sessão de Pagamento com Validação Obrigatória no Backend (Timing-Safe)
       const rawPaymentSession = localStorage.getItem("fastcurriculo_payment_session");
       if (rawPaymentSession) {
         try {
           const session = JSON.parse(rawPaymentSession);
-          if (session && session.isPaid && session.expiresAt && session.expiresAt > Date.now()) {
-            setIsPaid(true);
-            setPaymentSession({ downloadToken: session.downloadToken, orderId: session.orderId });
-            document.body.classList.add("is-paid");
-          } else if (session && session.expiresAt && session.expiresAt <= Date.now()) {
+          if (
+            session &&
+            session.isPaid &&
+            session.expiresAt &&
+            session.expiresAt > Date.now() &&
+            session.downloadToken
+          ) {
+            // Valida a autenticidade do token diretamente no backend antes de liberar o paywall
+            fetch("/api/payment/verify-token", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token: session.downloadToken }),
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (data && data.valid === true) {
+                  setIsPaid(true);
+                  setPaymentSession({
+                    downloadToken: session.downloadToken,
+                    orderId: session.orderId,
+                  });
+                  document.body.classList.add("is-paid");
+                } else {
+                  // Token forjado ou expirado: revoga a sessão imediatamente
+                  localStorage.removeItem("fastcurriculo_payment_session");
+                  setIsPaid(false);
+                  document.body.classList.remove("is-paid");
+                }
+              })
+              .catch(() => {
+                localStorage.removeItem("fastcurriculo_payment_session");
+                setIsPaid(false);
+                document.body.classList.remove("is-paid");
+              });
+          } else {
             localStorage.removeItem("fastcurriculo_payment_session");
+            setIsPaid(false);
+            document.body.classList.remove("is-paid");
           }
         } catch (paymentErr) {
           console.warn("Aviso ao ler sessão de pagamento salva:", paymentErr);
+          localStorage.removeItem("fastcurriculo_payment_session");
         }
       }
 
@@ -174,7 +209,7 @@ function EditorContent() {
   }, [isPaid]);
 
   // Abertura segura do checkout com validação obrigatória dos dados essenciais
-  const handleOpenCheckout = React.useCallback(() => {
+  const handleOpenCheckout = React.useCallback(async () => {
     const check = validateResumeForExport(resumeData, { requirePersonalInfo: true });
     if (!check.valid) {
       const msg =
@@ -184,8 +219,56 @@ function EditorContent() {
       return;
     }
     setValidationAlert(null);
+
+    // Obtém o token ativo do contexto ou do localStorage
+    let activeToken = downloadToken;
+    if (!activeToken && typeof window !== "undefined") {
+      try {
+        const s = JSON.parse(localStorage.getItem("fastcurriculo_payment_session") || "{}");
+        activeToken = s?.downloadToken || null;
+      } catch {
+        activeToken = null;
+      }
+    }
+
+    // Se a sessão já estiver como paga, valida o token com o backend antes de gerar o download direto
+    if (isPaid && activeToken) {
+      try {
+        const verifyRes = await fetch("/api/payment/verify-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: activeToken }),
+        });
+        const verifyData = await verifyRes.json();
+        if (verifyData && verifyData.valid === true) {
+          const sanitizedName = resumeData.personal.fullName
+            ? resumeData.personal.fullName
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z0-9]/g, "-")
+                .replace(/-+/g, "-")
+                .replace(/^-|-$/g, "")
+            : "profissional";
+          const fileName = `fastcurriculo-${sanitizedName || "profissional"}.pdf`;
+          const { downloadResumePdf } = await import("@/lib/pdf/generate-pdf");
+          await downloadResumePdf({ fileName, elementId: "resume-document-root" });
+          return;
+        }
+      } catch (err) {
+        console.warn("Falha na validação de token para download direto:", err);
+      }
+
+      // Se o token for inválido ou rejeitado pelo backend, revoga o estado de pago
+      clearPaymentSession();
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("fastcurriculo_payment_session");
+        document.body.classList.remove("is-paid");
+      }
+    }
+
     setIsCheckoutOpen(true);
-  }, [resumeData, setCurrentStep]);
+  }, [resumeData, setCurrentStep, isPaid, downloadToken, clearPaymentSession]);
 
   // Registra a ação de download no contexto central (consumido pela Navbar desacoplada)
   useEffect(() => {

@@ -18,6 +18,7 @@ interface EditorContextType {
   downloadToken: string | null;
   orderId: string | null;
   setPaymentSession: (session: { downloadToken?: string; orderId?: string }) => void;
+  clearPaymentSession: () => void;
   triggerDownloadModal: () => void;
   registerDownloadTrigger: (trigger: () => void) => void;
 }
@@ -50,6 +51,12 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const clearPaymentSession = useCallback(() => {
+    setIsPaid(false);
+    setDownloadToken(null);
+    setOrderId(null);
+  }, []);
+
   return (
     <EditorContext.Provider
       value={{
@@ -60,6 +67,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         downloadToken,
         orderId,
         setPaymentSession,
+        clearPaymentSession,
         triggerDownloadModal,
         registerDownloadTrigger,
       }}
@@ -81,6 +89,7 @@ export function useEditor() {
       downloadToken: null,
       orderId: null,
       setPaymentSession: () => {},
+      clearPaymentSession: () => {},
       triggerDownloadModal: () => {},
       registerDownloadTrigger: () => {},
     };

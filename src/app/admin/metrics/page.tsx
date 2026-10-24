@@ -326,7 +326,7 @@ export default function AdminMetricsPage() {
           </div>
         </header>
 
-        {/* Status da Persistência de Dados (Vercel Serverless vs KV) */}
+        {/* Status da Persistência de Dados (Netlify Serverless vs Upstash Redis) */}
         {data?.storage && (
           <div
             className={`p-4 rounded-xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs ${

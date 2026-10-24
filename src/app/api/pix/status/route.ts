@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { orderStore, FIXED_PRICE_IN_CENTS } from "@/lib/payment/store";
+import { orderStore } from "@/lib/payment/store";
+import { getPaymentGateway } from "@/lib/payment/factory";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,13 +15,11 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const token =
-      process.env.MP_ACCESS_TOKEN ||
-      process.env.MERCADOPAGO_ACCESS_TOKEN ||
-      process.env.NEXT_PUBLIC_MP_ACCESS_TOKEN;
+    // 1. Verifica se já está registrado e marcado como pago na orderStore (Memória ou KV)
+    const storedOrder =
+      (await orderStore.getOrderAsync(id)) ||
+      (await orderStore.getOrderByPaymentIdAsync(id));
 
-    // 1. Verifica se já está registrado e marcado como pago na orderStore em memória
-    const storedOrder = orderStore.getOrder(id) || orderStore.getOrderByPaymentId(id);
     if (storedOrder && storedOrder.status === "paid" && storedOrder.downloadToken) {
       return NextResponse.json({
         pago: true,
@@ -29,84 +28,39 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    if (!token) {
+    // 2. Consulta o gateway configurado
+    let gateway;
+    try {
+      gateway = getPaymentGateway();
+    } catch (configErr) {
+      const msg =
+        configErr instanceof Error
+          ? configErr.message
+          : "501 Not Implemented: Provedor de pagamento pendente.";
+
+      const is501 = msg.includes("501");
       return NextResponse.json(
         {
-          error:
-            "Token de acesso do Mercado Pago não configurado no servidor (MP_ACCESS_TOKEN ou MERCADOPAGO_ACCESS_TOKEN).",
+          error: msg,
         },
-        { status: 500 }
+        { status: is501 ? 501 : 503 }
       );
     }
 
-    // 2. Consulta à API do Mercado Pago
-    // Primeiro tenta via /v1/payments/{id}
-    const res = await fetch(`https://api.mercadopago.com/v1/payments/${id}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    });
+    const currentStatus = await gateway.checkStatus(id);
 
-    if (res.ok) {
-      const data = await res.json();
-      const status = data.status;
-
-      if (status === "approved") {
-        // Garante ressincronização serverless da ordem com valor de R$ 5,00 (500 centavos)
-        const paidResult = orderStore.syncApprovedOrder(id, FIXED_PRICE_IN_CENTS);
-        return NextResponse.json({
-          pago: true,
-          status: "approved",
-          downloadToken: paidResult.downloadToken,
-        });
-      }
-
+    if (currentStatus === "paid") {
+      const paidResult = await orderStore.markAsPaidAsync(id);
       return NextResponse.json({
-        pago: false,
-        status: status || "pending",
+        pago: true,
+        status: "approved",
+        downloadToken: paidResult?.downloadToken,
       });
     }
 
-    // Fallback: se o ID for de uma Order (v1/orders/{id})
-    const orderRes = await fetch(`https://api.mercadopago.com/v1/orders/${id}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    });
-
-    if (orderRes.ok) {
-      const orderData = await orderRes.json();
-      const orderStatus = orderData.status;
-      const firstPaymentStatus = orderData.transactions?.payments?.[0]?.status;
-
-      const isPaid =
-        orderStatus === "processed" ||
-        firstPaymentStatus === "processed" ||
-        firstPaymentStatus === "approved";
-
-      if (isPaid) {
-        const paidResult = orderStore.syncApprovedOrder(id, FIXED_PRICE_IN_CENTS);
-        return NextResponse.json({
-          pago: true,
-          status: "approved",
-          downloadToken: paidResult.downloadToken,
-        });
-      }
-
-      return NextResponse.json({
-        pago: false,
-        status: orderStatus || firstPaymentStatus || "pending",
-      });
-    }
-
-    // Se a consulta falhou no Mercado Pago
     return NextResponse.json({
       pago: false,
-      status: "pending",
+      status: currentStatus || "pending",
     });
   } catch (error: unknown) {
     const errorMsg = error instanceof Error ? error.message : "Erro desconhecido";

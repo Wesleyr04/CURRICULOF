@@ -7,7 +7,7 @@ export async function POST(_req: NextRequest) {
   try {
     const gateway = getPaymentGateway();
 
-    // Cria a ordem efêmera no servidor com o valor estritamente fixado em 500 centavos (R$ 5,00)
+    // Cria a ordem efêmera no servidor com o valor estritamente fixado em 299 centavos (R$ 2,99)
     const tempPaymentId = `temp_${Date.now()}`;
     const order = orderStore.createOrder(tempPaymentId, FIXED_PRICE_IN_CENTS);
 
@@ -17,8 +17,9 @@ export async function POST(_req: NextRequest) {
       description: "Geração de Currículo Profissional - FastCurrículo",
     });
 
-    // Atualiza com o paymentId real retornado pelo provedor
+    // Atualiza com o paymentId real retornado pelo provedor e sincroniza no KV
     order.paymentId = result.paymentId;
+    await orderStore.updateOrderPaymentId(order.orderId, result.paymentId);
 
     return NextResponse.json(
       {
@@ -41,9 +42,11 @@ export async function POST(_req: NextRequest) {
   } catch (error: unknown) {
     const errorMsg = error instanceof Error ? error.message : "Erro desconhecido";
     console.error("[Payment Create Error]", errorMsg);
+
+    const is501 = errorMsg.includes("501");
     return NextResponse.json(
-      { error: "Não foi possível gerar a cobrança Pix no momento. Tente novamente." },
-      { status: 500 }
+      { error: errorMsg },
+      { status: is501 ? 501 : 500 }
     );
   }
 }

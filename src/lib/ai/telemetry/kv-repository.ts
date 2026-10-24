@@ -20,12 +20,12 @@ export class KvUsageRepository implements UsageRepository {
       type: "kv_remote",
       isPersistent: configured,
       description: configured
-        ? "Armazenamento em nuvem persistente (Vercel KV / Upstash Redis) conectado com sucesso via REST API."
-        : "Vercel KV / Upstash Redis não configurado no ambiente. Registros não persistirão entre reciclagens de contêiner serverless.",
+        ? "Armazenamento em nuvem persistente (Upstash Redis) conectado com sucesso via REST API."
+        : "Upstash Redis não configurado no ambiente. Registros não persistirão entre reciclagens de contêiner serverless.",
       remoteConfigured: configured,
       setupInstructions: configured
         ? null
-        : "Para ativar a persistência definitiva em produção na Vercel: adicione uma integração 'Vercel KV' ou 'Upstash Redis' nas configurações do projeto, o que preenche automaticamente as variáveis KV_REST_API_URL e KV_REST_API_TOKEN.",
+        : "Para ativar a persistência definitiva em produção na Netlify: configure as variáveis de ambiente KV_REST_API_URL e KV_REST_API_TOKEN vinculando uma base Upstash Redis.",
     };
   }
 
@@ -331,7 +331,7 @@ export class KvUsageRepository implements UsageRepository {
       breakdownByModel,
       unmappedModelsCount,
       disclaimer:
-        "Custo calculado com base nos tokens consumidos registrados no Vercel KV / Upstash Redis e na tabela pública da Anthropic.",
+        "Custo calculado com base nos tokens consumidos registrados no Upstash Redis e na tabela pública da Anthropic.",
     };
   }
 

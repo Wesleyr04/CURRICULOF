@@ -29,15 +29,15 @@ export class JsonlUsageRepository implements UsageRepository {
         this.filePath = path.join(dataDir, "ai-usage.jsonl");
       }
 
-      // No ambiente serverless da Vercel, o diretório /tmp é o único gravável no filesystem efêmero
-      if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+      // Em ambiente serverless (Netlify / Nuvem), o diretório /tmp é o único gravável no filesystem efêmero
+      if (process.env.NETLIFY || process.env.NODE_ENV === "production") {
         this.fallbackFilePath = path.join("/tmp", "ai-usage.jsonl");
       }
     }
   }
 
   getStorageInfo(): StorageInfo {
-    const isVercel = Boolean(process.env.VERCEL || (process.env.NODE_ENV === "production" && !this.filePath.includes("test")));
+    const isServerless = Boolean(process.env.NETLIFY || (process.env.NODE_ENV === "production" && !this.filePath.includes("test")));
     const isTest = process.env.NODE_ENV === "test" || Boolean(process.env.VITEST);
 
     if (isTest) {
@@ -49,15 +49,15 @@ export class JsonlUsageRepository implements UsageRepository {
       };
     }
 
-    if (isVercel) {
+    if (isServerless) {
       return {
         type: "serverless_ephemeral",
         isPersistent: false,
         description:
-          "Vercel Serverless Function (disco de execução somente-leitura e /tmp volátil). Métricas em disco são reiniciadas a cada reciclagem de contêiner lambda.",
+          "Netlify Serverless Function (disco de execução somente-leitura e /tmp volátil). Métricas em disco são reiniciadas a cada reciclagem de contêiner serverless.",
         remoteConfigured: false,
         setupInstructions:
-          "Para persistência permanente em produção: configure as variáveis de ambiente KV_REST_API_URL e KV_REST_API_TOKEN vinculando uma base Vercel KV ou Upstash Redis.",
+          "Para persistência permanente em produção: configure as variáveis de ambiente KV_REST_API_URL e KV_REST_API_TOKEN vinculando uma base Upstash Redis.",
         filePath: this.fallbackFilePath || this.filePath,
       };
     }
@@ -99,7 +99,7 @@ export class JsonlUsageRepository implements UsageRepository {
     this.inMemoryFallback.set(validated.id, validated);
 
     // 4. Log Estruturado Permanente (Zero-PII)
-    // Permite ingestão direta e retenção contínua no Vercel Log Drains / Datadog / Logflare / Axiom
+    // Permite ingestão direta e retenção contínua em Netlify Logs / Datadog / Logflare / Axiom
     console.log("[AI_USAGE_TELEMETRY]", JSON.stringify(validated));
 
     const line = JSON.stringify(validated) + "\n";

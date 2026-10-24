@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { aiTelemetryService } from "@/lib/ai/telemetry/service";
 import { AIOperationType, UsageFilter } from "@/lib/ai/telemetry/types";
 
+function safeCompareAdminToken(provided: string, expected: string): boolean {
+  if (!provided || !expected) return false;
+  try {
+    const hashProvided = crypto.createHash("sha256").update(provided.trim()).digest();
+    const hashExpected = crypto.createHash("sha256").update(expected.trim()).digest();
+    return crypto.timingSafeEqual(hashProvided, hashExpected);
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
-    // 1. Verificação de Segurança e Autenticação Administrativa
+    // 1. Verificação de Segurança e Autenticação Administrativa Timing-Safe
     const adminToken = process.env.ADMIN_METRICS_TOKEN;
     if (!adminToken || adminToken.trim() === "") {
       return NextResponse.json(
@@ -22,7 +34,7 @@ export async function GET(req: NextRequest) {
     const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
     const providedToken = bearerToken || customHeader.trim();
 
-    if (!providedToken || providedToken !== adminToken.trim()) {
+    if (!providedToken || !safeCompareAdminToken(providedToken, adminToken)) {
       return NextResponse.json(
         { error: "Não autorizado. Token administrativo ausente ou inválido." },
         { status: 401 }

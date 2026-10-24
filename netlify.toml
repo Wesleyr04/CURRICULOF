@@ -1,0 +1,30 @@
+# ==============================================================================
+# CONFIGURAÇÃO DE DEPLOY NETLIFY — FASTCURRÍCULO (NEXT.JS 16 APP ROUTER)
+# ==============================================================================
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Plugin oficial da Netlify para Next.js (App Router, Server Actions, Serverless Functions)
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Cache de longa duração para arquivos estáticos com hash
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Headers de Segurança Global (OWASP Best Practices)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"

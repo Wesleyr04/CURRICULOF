@@ -33,9 +33,15 @@ function cleanupExpired() {
 }
 
 /**
- * Obtém o IP do cliente de forma resiliente a proxies da Vercel / Cloudflare
+ * Obtém o IP do cliente de forma resiliente a proxies da Netlify / Cloudflare
  */
 export function getClientIp(req: Request): string {
+  // Cabeçalhos específicos da Netlify
+  const netlifyIp = req.headers.get("x-nf-client-connection-ip") || req.headers.get("client-ip");
+  if (netlifyIp && netlifyIp.trim()) {
+    return netlifyIp.trim();
+  }
+
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) {
     const firstIp = forwarded.split(",")[0].trim();

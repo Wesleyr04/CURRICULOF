@@ -1,48 +1,31 @@
 import { IPaymentGateway } from "./types";
 import { MockPixGateway } from "./mock-gateway";
-import { AsaasGateway } from "./asaas-gateway";
-import { MercadoPagoGateway } from "./mercadopago-gateway";
+import { PushinPayGateway } from "./pushinpay-gateway";
 
-export const FIXED_PRICE_IN_CENTS = 500; // R$ 5,00 fixado no servidor
+export const FIXED_PRICE_IN_CENTS = 299; // R$ 2,99 fixado no servidor
 
-// Singleton para o mock gateway compartilhar status durante testes locais
-const sharedMockGateway = new MockPixGateway();
+/**
+ * Retorna o provedor de pagamento ativo no sistema.
+ * Suporta 'pushinpay' (oficial), 'mock' (testes) ou 'none' (falha controlada 501).
+ */
+export function getPaymentGateway(explicitGateway?: string): IPaymentGateway {
+  const gateway = (
+    explicitGateway ||
+    process.env.PAYMENT_GATEWAY ||
+    "none"
+  )
+    .replace(/[\r\n"']/g, "")
+    .toLowerCase()
+    .trim();
 
-export function getPaymentGateway(): IPaymentGateway {
-  const gateway = (process.env.PAYMENT_GATEWAY || "mock").toLowerCase();
-  const isProduction = process.env.NODE_ENV === "production";
-
-  if (gateway === "asaas") {
-    if (process.env.ASAAS_API_KEY) {
-      return new AsaasGateway();
-    }
-    if (isProduction) {
-      throw new Error("Configuração de pagamento incompleta: ASAAS_API_KEY ausente em produção.");
-    }
-    console.warn("[Pagamento] ASAAS_API_KEY ausente. Alternando para MockPixGateway em desenvolvimento.");
-    return sharedMockGateway;
+  if (gateway === "pushinpay") {
+    return new PushinPayGateway();
   }
 
-  if (gateway === "mercadopago") {
-    const mpToken =
-      process.env.MP_ACCESS_TOKEN ||
-      process.env.MERCADOPAGO_ACCESS_TOKEN ||
-      process.env.NEXT_PUBLIC_MP_ACCESS_TOKEN;
-    if (mpToken) {
-      return new MercadoPagoGateway();
-    }
-    if (isProduction) {
-      throw new Error(
-        "Configuração de pagamento incompleta: MP_ACCESS_TOKEN ou MERCADOPAGO_ACCESS_TOKEN ausente em produção."
-      );
-    }
-    console.warn("[Pagamento] Token do Mercado Pago ausente. Alternando para MockPixGateway em desenvolvimento.");
-    return sharedMockGateway;
+  if (gateway === "mock") {
+    return new MockPixGateway();
   }
 
-  if (isProduction && process.env.ALLOW_MOCK_PAYMENT !== "true" && process.env.PAYMENT_GATEWAY && process.env.PAYMENT_GATEWAY !== "mock") {
-    throw new Error("Gateway mock proibido em ambiente de produção sem flag explícita.");
-  }
-
-  return sharedMockGateway;
+  throw new Error("501 Not Implemented: Provedor de pagamento pendente.");
 }
+

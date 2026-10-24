@@ -499,7 +499,7 @@ export async function downloadReceiptPdf(data: ReceiptPdfData): Promise<boolean>
 
     const rows = [
       ["Serviço:", "Liberação de Download de Currículo Profissional (A4)"],
-      ["Valor Pago:", data.formattedAmount || "R$ 5,00"],
+      ["Valor Pago:", data.formattedAmount || "R$ 2,99"],
       ["Método de Pagamento:", "Pix Instantâneo (Banco Central do Brasil)"],
       ["ID do Pedido:", data.orderId],
       ["Identificador Pix (Payment ID):", data.paymentId],
@@ -532,7 +532,7 @@ export async function downloadReceiptPdf(data: ReceiptPdfData): Promise<boolean>
     pdf.setFontSize(8);
     pdf.setTextColor(100, 116, 139);
     const legalNotice =
-      "Este documento comprova o pagamento unitário no valor fixo de R$ 5,00 para exportação do currículo em formato A4. " +
+      "Este documento comprova o pagamento unitário no valor fixo de R$ 2,99 para exportação do currículo em formato A4. " +
       "Em estrita observância à LGPD, o FastCurrículo adota arquitetura de zero persistência permanente de dados pessoais de candidatos. " +
       "Nenhum dado cadastral ou sensível bancário é armazenado ou compartilhado com terceiros.";
     const splitLegal = pdf.splitTextToSize(legalNotice, contentWidth);

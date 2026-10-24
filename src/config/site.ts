@@ -3,8 +3,8 @@ export const SITE_CONFIG = {
   tagline: "Seu próximo currículo começa aqui.",
   description: "Organize suas informações, escolha um modelo e tenha seu currículo pronto para baixar. Sem cadastro e sem armazenar seus dados pessoais.",
   pricing: {
-    amountInCents: 500,
-    formatted: "R$ 5,00",
+    amountInCents: 299,
+    formatted: "R$ 2,99",
     period: "pagamento único",
     description: "por currículo gerado",
   },
@@ -36,8 +36,8 @@ export const SITE_CONFIG = {
       icon: "FileSpreadsheet",
     },
     {
-      title: "Preço único de R$ 5,00",
-      description: "Apenas R$ 5,00 por currículo via Pix. Sem assinaturas surpresa ou planos recorrentes.",
+      title: "Preço único de R$ 2,99",
+      description: "Apenas R$ 2,99 por currículo via Pix. Sem assinaturas surpresa ou planos recorrentes.",
       icon: "Coins",
     },
     {
@@ -60,12 +60,12 @@ export const SITE_CONFIG = {
     {
       step: 3,
       title: "Baixe seu currículo",
-      description: "Visualize o resultado em tempo real e exporte seu currículo profissional por apenas R$ 5,00.",
+      description: "Visualize o resultado em tempo real e exporte seu currículo profissional por apenas R$ 2,99.",
     },
   ],
   faqs: [
     {
-      question: "Por que apenas R$ 5,00?",
+      question: "Por que apenas R$ 2,99?",
       answer: "Acreditamos que buscar emprego não deve ser um processo caro. Nosso sistema não tem custos desnecessários com servidores de banco de dados e contas de usuários, permitindo oferecer um valor acessível e justo para todos.",
     },
     {
@@ -86,7 +86,7 @@ export const SITE_CONFIG = {
     },
     {
       question: "Como funciona o pagamento?",
-      answer: "O pagamento é feito por Pix no valor exato de R$ 5,00. Assim que a transação é confirmada, o download do PDF é liberado instantaneamente.",
+      answer: "O pagamento é feito por Pix no valor exato de R$ 2,99. Assim que a transação é confirmada, o download do PDF é liberado instantaneamente.",
     },
   ],
 };

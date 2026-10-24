@@ -10,8 +10,8 @@ export class MockPixGateway implements IPaymentGateway {
     const paymentId = `mock_pay_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     this.mockStatuses.set(paymentId, "pending");
 
-    // Código Pix Copia-e-Cola fictício porém no formato EMV padrão
-    const dummyPix = `00020126580014br.gov.bcb.pix0136fastcurriculo-demo-pix-chave-aleatoria52040000530398654045.005802BR5913FASTCURRICULO6009SAO PAULO62140510${params.orderId}6304ABCD`;
+    // Código Pix Copia-e-Cola fictício porém no formato EMV padrão (R$ 2,99)
+    const dummyPix = `00020126580014br.gov.bcb.pix0136fastcurriculo-demo-pix-chave-aleatoria52040000530398654042.995802BR5913FASTCURRICULO6009SAO PAULO62140510${params.orderId}6304ABCD`;
 
     return {
       paymentId,

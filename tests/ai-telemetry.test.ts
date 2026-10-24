@@ -770,13 +770,13 @@ describe("Suíte de Telemetria Financeira e Monitoramento Real de Tokens (Anthro
     });
 
     it("Linhagem 4: Mapeamento resiliente de preços deve cobrir claude-3-sonnet e variáveis com quebra de linha ou aspas", () => {
-      // Teste A: claude-3-sonnet-20240229 oficial (anteriormente causava unmapped_model na Vercel)
+      // Teste A: claude-3-sonnet-20240229 oficial
       const pricingSonnet3 = findModelPricing("claude-3-sonnet-20240229");
       expect(pricingSonnet3).not.toBeNull();
       expect(pricingSonnet3?.modelPattern).toBe("claude-3-sonnet");
       expect(pricingSonnet3?.inputPricePerMillion).toBe(3.0);
 
-      // Teste B: Variável com quebra de linha da Vercel ("claude-3-5-haiku-20241022\n")
+      // Teste B: Variável com quebra de linha acidental ("claude-3-5-haiku-20241022\n")
       const pricingHaikuWithNewline = findModelPricing("claude-3-5-haiku-20241022\n");
       expect(pricingHaikuWithNewline).not.toBeNull();
       expect(pricingHaikuWithNewline?.modelPattern).toBe("claude-3-5-haiku");
@@ -944,7 +944,7 @@ describe("Suíte de Telemetria Financeira e Monitoramento Real de Tokens (Anthro
     });
   });
 
-  describe("Fase 7: Persistência Serverless, Vercel KV e Distinção Produção vs Testes", () => {
+  describe("Fase 7: Persistência Serverless, Upstash Redis e Distinção Produção vs Testes", () => {
     it("Persistência 1: KvUsageRepository quando configurado formata comandos REST e serializa registros com responseId e tokens reais", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -1027,24 +1027,24 @@ describe("Suíte de Telemetria Financeira e Monitoramento Real de Tokens (Anthro
       expect(testInfo.type).toBe("memory_test");
       expect(testInfo.isPersistent).toBe(false);
 
-      // 2. Simulação de ambiente Vercel Serverless
-      const originalVercel = process.env.VERCEL;
+      // 2. Simulação de ambiente Netlify Serverless
+      const originalNetlify = process.env.NETLIFY;
       const originalNodeEnv = process.env.NODE_ENV;
       const originalVitest = process.env.VITEST;
 
       delete process.env.VITEST;
-      process.env.VERCEL = "1";
+      process.env.NETLIFY = "true";
       (process.env as Record<string, string | undefined>).NODE_ENV = "production";
 
-      const vercelRepo = new JsonlUsageRepository();
-      const vercelInfo = vercelRepo.getStorageInfo();
-      expect(vercelInfo.type).toBe("serverless_ephemeral");
-      expect(vercelInfo.isPersistent).toBe(false);
-      expect(vercelInfo.setupInstructions).toContain("KV_REST_API_URL");
+      const netlifyRepo = new JsonlUsageRepository();
+      const netlifyInfo = netlifyRepo.getStorageInfo();
+      expect(netlifyInfo.type).toBe("serverless_ephemeral");
+      expect(netlifyInfo.isPersistent).toBe(false);
+      expect(netlifyInfo.setupInstructions).toContain("KV_REST_API_URL");
 
       // Restaura ambiente
-      if (originalVercel !== undefined) process.env.VERCEL = originalVercel;
-      else delete process.env.VERCEL;
+      if (originalNetlify !== undefined) process.env.NETLIFY = originalNetlify;
+      else delete process.env.NETLIFY;
       (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
       if (originalVitest !== undefined) process.env.VITEST = originalVitest;
     });
