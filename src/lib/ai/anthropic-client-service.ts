@@ -440,7 +440,17 @@ export class AnthropicClientService implements IAIService {
       // Se for um erro já tratado de recusa de conteúdo, não registra como falha de API
       if (!(error instanceof AIContentRefusalError)) {
         const durationMs = Date.now() - startTime;
-        const errObj = error as { name?: string; status?: number; message?: string };
+        const errObj = error as { name?: string; status?: number; message?: string; error?: { type?: string; message?: string } };
+        // [DIAG-TEMP] Log bruto pré-sanitização para diagnóstico do HTTP 400 (sem expor chave)
+        console.error("[ANTHROPIC_RAW_ERROR_DIAG]", {
+          name: errObj?.name,
+          status: errObj?.status,
+          message: typeof errObj?.message === "string" ? errObj.message.slice(0, 400) : String(error).slice(0, 400),
+          errorType: errObj?.error?.type,
+          errorDetail: typeof errObj?.error?.message === "string" ? errObj.error.message.slice(0, 300) : undefined,
+          model: this.model,
+          isOpenRouter: this.isOpenRouter,
+        });
         const errorCode = errObj?.name || (errObj?.status ? `HTTP_${errObj.status}` : "API_ERROR");
         const safeErrorMsg = sanitizeAiErrorMessage(error);
 
