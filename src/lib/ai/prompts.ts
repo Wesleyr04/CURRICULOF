@@ -92,9 +92,7 @@ ${targetLengthGuideline}
 ${careerStageGuideline}`;
   }
 
-  return `${AI_SYSTEM_INSTRUCTIONS}
-
-${promptTask}
+  return `${promptTask}
 
 DADOS FORNECIDOS PELO CANDIDATO:
 <user_untrusted_data>
@@ -126,9 +124,7 @@ export function buildImproveTextPrompt(params: AIImproveTextParams): string {
   const stage = params.careerStage || "experienced";
 
   if (isSummary) {
-    return `${AI_SYSTEM_INSTRUCTIONS}
-
-TAREFA:
+    return `TAREFA:
 Aprimore, corrija e profissionalize o Resumo / Perfil Profissional abaixo para um currículo de alto impacto para ATS.
 ${params.jobTitle ? `Cargo de referência: ${params.jobTitle}` : ""}
 ${stage === "career_transition" ? "Diretriz: Candidato em transição de carreira — valorize habilidades transferíveis conectando ao cargo pretendido." : ""}
@@ -163,9 +159,7 @@ O candidato está migrando para o cargo de "${params.jobTitle || "novo cargo"}".
 Estruture as atividades valorizando proatividade, responsabilidade com rotinas, suporte à equipe e atenção aos detalhes.`;
   }
 
-  return `${AI_SYSTEM_INSTRUCTIONS}
-
-TAREFA:
+  return `TAREFA:
 Aprimore, corrija e profissionalize a descrição das atividades e realizações da experiência profissional informada abaixo para um currículo de alto impacto para ATS.
 ${params.jobTitle ? `Cargo alvo / referência: ${params.jobTitle}` : ""}
 ${params.company ? `Empresa: ${params.company}` : ""}

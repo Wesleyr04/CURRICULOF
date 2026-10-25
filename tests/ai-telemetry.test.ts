@@ -743,7 +743,11 @@ describe("Suíte de Telemetria Financeira e Monitoramento Real de Tokens (Anthro
         field: "Contabilidade",
         mode: "complete",
       });
-      expect(summaryPrompt).toContain("NUNCA use bullet points em resumos profissionais");
+      // A regra "NUNCA use bullet points" pertence ao AI_SYSTEM_INSTRUCTIONS, passado via system:
+      // e NÃO ao prompt de usuário (que era o bug que causava HTTP 400 na Anthropic).
+      const { AI_SYSTEM_INSTRUCTIONS } = await import("@/lib/ai/prompts");
+      expect(AI_SYSTEM_INSTRUCTIONS).toContain("NUNCA use bullet points em resumos profissionais");
+      // A instrução de retorno ainda deve orientar formato sem bullet points
       expect(summaryPrompt).toContain("sem bullet points");
 
       // 2. Prompt de Aprimoramento de Resumo Existente
