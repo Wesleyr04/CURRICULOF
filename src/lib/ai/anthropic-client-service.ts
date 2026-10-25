@@ -141,7 +141,16 @@ export class AnthropicClientService implements IAIService {
       throw new AIConfigurationError("O identificador do modelo de inteligência artificial é inválido.");
     }
 
-    this.model = cleanModel;
+    // Validação estrita do modelo Anthropic Oficial (impede modelos fictícios ou de outros provedores)
+    let effectiveModel = cleanModel;
+    if (!this.isOpenRouter && !cleanModel.toLowerCase().startsWith("claude-")) {
+      console.warn(
+        `[AnthropicClientService] Modelo '${cleanModel}' não é um modelo Claude oficial reconhecido. Recorrendo com segurança ao modelo oficial 'claude-3-5-haiku-20241022'.`
+      );
+      effectiveModel = "claude-3-5-haiku-20241022";
+    }
+
+    this.model = effectiveModel;
 
     if (this.isOpenRouter) {
       this.providerName = "OpenRouter (Claude Compatibility)";
@@ -154,7 +163,7 @@ export class AnthropicClientService implements IAIService {
       this.client = null;
     } else {
       this.providerName = "Anthropic Claude (Oficial)";
-      this.openRouterModel = cleanModel;
+      this.openRouterModel = effectiveModel;
       // Regras 3, 4 e 5: Força obrigatoriamente baseURL oficial da Anthropic,
       // ignorando OPENAI_BASE_URL, ANTHROPIC_BASE_URL ou qualquer outra variável.
       this.client = new Anthropic({

@@ -121,6 +121,28 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
       );
     });
 
+    it("deve recorrer com segurança a claude-3-5-haiku-20241022 caso um modelo não-Claude seja configurado", async () => {
+      process.env.AI_PROVIDER = "anthropic";
+      process.env.ANTHROPIC_API_KEY = "sk-ant-test-key-fallback";
+      process.env.ANTHROPIC_MODEL = "gpt-4o-invalido-para-anthropic";
+
+      mockCreate.mockResolvedValueOnce({
+        content: [{ type: "text", text: "Resposta gerada com fallback para modelo haiku oficial." }],
+      });
+
+      const service = getAIService();
+      await service.suggestSummary({
+        jobTitle: "Padeiro",
+        field: "Alimentação",
+      });
+
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: "claude-3-5-haiku-20241022",
+        })
+      );
+    });
+
     it("deve lançar AIConfigurationError se o construtor for invocado com chave vazia", () => {
       expect(() => new AnthropicClientService("", "claude-3-5-haiku-20241022")).toThrowError(
         AIConfigurationError

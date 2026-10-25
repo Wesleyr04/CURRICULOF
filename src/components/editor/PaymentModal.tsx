@@ -16,10 +16,6 @@ import {
   Download,
   FileCheck,
   ArrowRight,
-  ShieldCheck,
-  PackageCheck,
-  Calendar,
-  Hash,
   AlertTriangle,
 } from "lucide-react";
 import { SITE_CONFIG } from "@/config/site";
@@ -234,7 +230,7 @@ export function PaymentModal({
     } catch (pollErr: unknown) {
       console.error("Erro na verificação de status Pix:", pollErr);
     }
-  }, [handlePaymentApproved, orderData?.id, stopPolling]);
+  }, [handlePaymentApproved, orderData, stopPolling]);
 
   // 2. Polling automático a cada 3 segundos em /api/pix/status?id={id}
   useEffect(() => {
@@ -575,7 +571,11 @@ export function PaymentModal({
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col items-center justify-center">
                 {orderData?.qrCodeBase64 && (
                   <img
-                    src={`data:image/png;base64,${orderData.qrCodeBase64}`}
+                    src={
+                      orderData.qrCodeBase64.startsWith("data:")
+                        ? orderData.qrCodeBase64
+                        : `data:image/png;base64,${orderData.qrCodeBase64}`
+                    }
                     alt="QR Code Pix"
                     className="w-48 h-48 rounded-lg shadow-xs bg-white p-2 border border-slate-200"
                   />

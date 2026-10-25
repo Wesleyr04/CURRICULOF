@@ -30,8 +30,17 @@ export class PushinPayGateway implements IPaymentGateway {
     const rawUrl =
       apiUrl ||
       process.env.PUSHINPAY_API_URL ||
-      "https://api.pushinpay.com.br/api/v1";
-    this.apiUrl = rawUrl.replace(/\/+$/, "");
+      "https://api.pushinpay.com.br/api";
+
+    // Normaliza a URL base: remove barras finais e remove /v1 se for a API oficial da PushinPay
+    let cleaned = rawUrl.replace(/\/+$/, "");
+    if (cleaned.includes("api.pushinpay.com.br")) {
+      cleaned = cleaned.replace(/\/v1$/, "");
+      if (!cleaned.endsWith("/api")) {
+        cleaned = `${cleaned}/api`;
+      }
+    }
+    this.apiUrl = cleaned;
 
     this.token = (
       token ||
@@ -100,7 +109,10 @@ export class PushinPayGateway implements IPaymentGateway {
       const paymentId = String(data.id || data.txid || params.orderId);
       const qrCodeText =
         data.qr_code || data.pix_link || "";
-      const qrCodeBase64 = data.qr_code_base64 || "";
+      let qrCodeBase64 = data.qr_code_base64 || "";
+      if (qrCodeBase64 && !qrCodeBase64.startsWith("data:")) {
+        qrCodeBase64 = `data:image/png;base64,${qrCodeBase64}`;
+      }
 
       if (!qrCodeText && !qrCodeBase64) {
         console.error("[PushinPay API] Resposta sem dados válidos de Pix:", data);
@@ -128,21 +140,21 @@ export class PushinPayGateway implements IPaymentGateway {
 
   /**
    * Consulta o status da cobrança Pix na PushinPay.
+   * Utiliza prioritariamente o endpoint oficial /transactions/{id}.
    */
   async checkStatus(paymentId: string): Promise<PaymentStatus> {
     if (!this.token || !paymentId) {
       return "pending";
     }
 
-    const targetEndpoint = this.apiUrl.endsWith("/pix/cashIn")
-      ? `${this.apiUrl}/${encodeURIComponent(paymentId)}`
-      : `${this.apiUrl}/pix/cashIn/${encodeURIComponent(paymentId)}`;
+    // Endpoint oficial documentado pela PushinPay para consulta de transação Pix
+    const primaryEndpoint = `${this.apiUrl}/transactions/${encodeURIComponent(paymentId)}`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
     try {
-      const res = await fetch(targetEndpoint, {
+      let res = await fetch(primaryEndpoint, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${this.token}`,
@@ -151,6 +163,24 @@ export class PushinPayGateway implements IPaymentGateway {
         signal: controller.signal,
         cache: "no-store",
       });
+
+      // Fallback resiliente caso o gateway utilize /transaction/{id} ou /pix/cashIn/{id}
+      if (res.status === 404) {
+        const fallbackEndpoint = `${this.apiUrl}/pix/cashIn/${encodeURIComponent(paymentId)}`;
+        const fallbackRes = await fetch(fallbackEndpoint, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            Accept: "application/json",
+          },
+          signal: controller.signal,
+          cache: "no-store",
+        }).catch(() => null);
+
+        if (fallbackRes && fallbackRes.ok) {
+          res = fallbackRes;
+        }
+      }
 
       if (!res.ok) {
         console.warn(

@@ -63,7 +63,7 @@ describe("Gateway PushinPay e Segurança de Pagamento Pix", () => {
     expect(result.isMock).toBe(false);
   });
 
-  it("checkStatus deve mapear paid, approved e liquidated para status 'paid'", async () => {
+  it("checkStatus deve chamar o endpoint oficial /transactions/{id} e mapear status 'paid'", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -73,6 +73,30 @@ describe("Gateway PushinPay e Segurança de Pagamento Pix", () => {
 
     const gateway = new PushinPayGateway("https://api.pushinpay.com.br/api/v1", "valid_token", "valid_secret");
     const status = await gateway.checkStatus("pushin_tx_12345");
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch.mock.calls[0][0]).toContain("/transactions/pushin_tx_12345");
+    expect(status).toBe("paid");
+  });
+
+  it("checkStatus deve fazer fallback para /pix/cashIn/{id} caso /transactions/{id} retorne 404", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ status: "paid" }),
+      });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const gateway = new PushinPayGateway("https://api.pushinpay.com.br/api", "valid_token", "valid_secret");
+    const status = await gateway.checkStatus("pushin_tx_fallback_001");
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch.mock.calls[0][0]).toContain("/transactions/pushin_tx_fallback_001");
+    expect(mockFetch.mock.calls[1][0]).toContain("/pix/cashIn/pushin_tx_fallback_001");
     expect(status).toBe("paid");
   });
 
@@ -84,7 +108,7 @@ describe("Gateway PushinPay e Segurança de Pagamento Pix", () => {
     });
     vi.stubGlobal("fetch", mockFetch);
 
-    const gateway = new PushinPayGateway("https://api.pushinpay.com.br/api/v1", "valid_token", "valid_secret");
+    const gateway = new PushinPayGateway("https://api.pushinpay.com.br/api", "valid_token", "valid_secret");
     const status = await gateway.checkStatus("pushin_tx_12345");
     expect(status).toBe("failed");
   });
