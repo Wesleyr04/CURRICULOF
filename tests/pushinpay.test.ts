@@ -63,6 +63,30 @@ describe("Gateway PushinPay e Segurança de Pagamento Pix", () => {
     expect(result.isMock).toBe(false);
   });
 
+  it("createPayment deve normalizar qr_code_base64 cru adicionando prefixo data:image/png;base64, caso venha sem prefixo", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: "pushin_tx_raw_base64",
+        status: "pending",
+        value: 299,
+        qr_code: "00020126580014br.gov.bcb.pix0136testepushinpay",
+        qr_code_base64: "iVBORw0KGgoAAAANSUhEUgAAraw_data",
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const gateway = new PushinPayGateway("https://api.pushinpay.com.br/api", "valid_token", "valid_secret");
+    const result = await gateway.createPayment({
+      orderId: "ord_raw_001",
+      amountInCents: 299,
+      description: "Liberação de Currículo",
+    });
+
+    expect(result.qrCodeBase64).toBe("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAraw_data");
+  });
+
   it("checkStatus deve chamar o endpoint oficial /transactions/{id} e mapear status 'paid'", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
