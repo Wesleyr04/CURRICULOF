@@ -493,32 +493,67 @@ export class AnthropicClientService implements IAIService {
           (combinedErr.includes("model") || combinedErr.includes("not_found") || combinedErr.includes("not found"));
 
         if (isModelNotFound) {
-          const fallbackModel =
-            targetModel === "claude-3-haiku-20240307"
-              ? "claude-3-5-haiku-20241022"
-              : "claude-3-haiku-20240307";
+          const fallbackCandidates = [
+            "claude-3-haiku-20240307",
+            "claude-3-5-haiku-latest",
+            "claude-3-5-sonnet-20241022",
+            "claude-3-5-sonnet-latest",
+            "claude-3-7-sonnet-20250219",
+          ].filter((m) => m !== targetModel);
 
           console.warn(
-            `[AnthropicClientService] Modelo '${targetModel}' não localizado no workspace da Anthropic (${rawErrMsg || rawErrDetail}). Acionando contingência de modelo para '${fallbackModel}'...`
+            `[AnthropicClientService] Modelo '${targetModel}' não localizado no workspace da Anthropic (${rawErrMsg || rawErrDetail}). Iniciando cascata de contingência de modelos...`
           );
 
-          try {
-            const fallbackResponse = await this.client!.messages.create({
-              model: fallbackModel,
-              max_tokens: maxTokens,
-              system: AI_SYSTEM_INSTRUCTIONS,
-              messages: [{ role: "user", content: promptText }],
-            });
+          let lastCandidateErr: unknown = firstErr;
 
-            // Atualiza o modelo ativo da instância para as requisições subsequentes
-            this.model = fallbackModel;
-            return fallbackResponse;
-          } catch (fallbackErr: unknown) {
-            console.error(
-              `[AnthropicClientService] Contingência de modelo para '${fallbackModel}' também falhou. Propagando erro original.`
-            );
-            throw firstErr;
+          for (const fallbackModel of fallbackCandidates) {
+            try {
+              console.log(`[AnthropicClientService] Tentando modelo de contingência '${fallbackModel}'...`);
+              const fallbackResponse = await this.client!.messages.create({
+                model: fallbackModel,
+                max_tokens: maxTokens,
+                system: AI_SYSTEM_INSTRUCTIONS,
+                messages: [{ role: "user", content: promptText }],
+              });
+
+              console.log(`[AnthropicClientService] Sucesso com modelo de contingência '${fallbackModel}'!`);
+              // Atualiza o modelo ativo da instância para as requisições subsequentes
+              this.model = fallbackModel;
+              return fallbackResponse;
+            } catch (fallbackErr: unknown) {
+              const fbStatus = (fallbackErr as any)?.status || 0;
+              const fbMsg = typeof (fallbackErr as any)?.message === "string" ? (fallbackErr as any).message : "";
+              const fbDetail = typeof (fallbackErr as any)?.error?.message === "string" ? (fallbackErr as any).error.message : "";
+              const fbCombined = `${fbMsg} ${fbDetail}`.toLowerCase();
+
+              console.error(`[AnthropicClientService] Falha na contingência com '${fallbackModel}':`, {
+                status: fbStatus,
+                message: fbMsg.slice(0, 300),
+                detail: fbDetail.slice(0, 300),
+              });
+
+              lastCandidateErr = fallbackErr;
+
+              // Se o erro NÃO for de modelo inexistente (ex: falta de crédito, auth ou rate limit),
+              // interrompe a cascata e propaga o erro real da conta (ex: saldo esgotado)
+              const isFbModelNotFound =
+                (fbStatus === 404 || fbStatus === 400 || (fallbackErr as Error)?.name === "NotFoundError") &&
+                (fbCombined.includes("model") || fbCombined.includes("not_found") || fbCombined.includes("not found"));
+
+              if (!isFbModelNotFound) {
+                console.error(
+                  `[AnthropicClientService] Erro de conta detectado durante contingência com '${fallbackModel}'. Interrompendo cascata para exibir diagnóstico real.`
+                );
+                throw fallbackErr;
+              }
+            }
           }
+
+          console.error(
+            `[AnthropicClientService] Todos os modelos de contingência foram rejeitados pela Anthropic. Propagando erro.`
+          );
+          throw lastCandidateErr;
         }
 
         const isTransient =

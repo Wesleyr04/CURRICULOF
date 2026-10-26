@@ -819,19 +819,42 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
       );
     });
 
-    it("6b. Se ambos os modelos retornarem model not found, deve propagar o erro definitivo de modelo", async () => {
-      // Primeira tentativa falha
+    it("6b. Se os modelos de contingência retornarem model not found, deve tentar a cascata e propagar o erro definitivo", async () => {
+      // 1 inicial + 5 candidatos rejeitados com model not found
+      for (let i = 0; i < 6; i++) {
+        mockCreate.mockRejectedValueOnce(
+          Object.assign(new Error("model: not found"), {
+            status: 404,
+            name: "NotFoundError",
+          })
+        );
+      }
+
+      const service = new AnthropicClientService("sk-ant-valid-key", "claude-3-5-haiku-20241022");
+      await expect(
+        service.suggestSummary({
+          jobTitle: "Desenvolvedor",
+          field: "TI",
+        })
+      ).rejects.toThrow("model: not found");
+
+      expect(mockCreate).toHaveBeenCalledTimes(6);
+    });
+
+    it("6d. Se um modelo de contingência retornar erro de conta (ex: saldo insuficiente), deve interromper a cascata e propagar o erro real", async () => {
+      // 1ª chamada: model not found
       mockCreate.mockRejectedValueOnce(
         Object.assign(new Error("model: claude-3-5-haiku-20241022 not found"), {
           status: 404,
           name: "NotFoundError",
         })
       );
-      // Segunda tentativa (fallback) também falha
+      // 2ª chamada (contingência): credit_balance_too_low
       mockCreate.mockRejectedValueOnce(
-        Object.assign(new Error("model: claude-3-haiku-20240307 not found"), {
-          status: 404,
-          name: "NotFoundError",
+        Object.assign(new Error("Your credit balance is too low to access the Claude API."), {
+          status: 400,
+          name: "BadRequestError",
+          error: { message: "credit_balance_too_low" },
         })
       );
 
@@ -841,8 +864,9 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
           jobTitle: "Desenvolvedor",
           field: "TI",
         })
-      ).rejects.toThrow("model: claude-3-5-haiku-20241022 not found");
+      ).rejects.toThrow(/credit balance/i);
 
+      // Interrompe imediatamente sem tentar os outros candidatos
       expect(mockCreate).toHaveBeenCalledTimes(2);
     });
 
