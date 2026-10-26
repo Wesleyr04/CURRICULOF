@@ -94,6 +94,15 @@ export function sanitizeAiErrorMessage(rawError: unknown): string {
     return "O modelo de inteligência artificial solicitado não está ativo ou não foi localizado no workspace da Anthropic.";
   }
 
+  // 1.3 Sobrecarga de capacidade no cluster do provedor (HTTP 529 / Overloaded)
+  if (
+    clean.includes("529") ||
+    clean.includes("Overloaded") ||
+    clean.includes("overloaded_error")
+  ) {
+    return "O provedor de inteligência artificial está temporariamente sobrecarregado (HTTP 529). Tente novamente em alguns segundos ou edite seu texto diretamente no campo.";
+  }
+
   // 2. Erros de rede, conexão ou gateways HTTP
   const hasNetworkError =
     clean.includes("502") ||
@@ -103,6 +112,8 @@ export function sanitizeAiErrorMessage(rawError: unknown): string {
     clean.includes("ETIMEDOUT") ||
     clean.includes("fetch failed") ||
     clean.includes("Internal Server Error") ||
+    clean.includes("Connection refused") ||
+    clean.includes("connection refused") ||
     clean.includes("OpenRouter") ||
     clean.includes("Cloudflare");
 
@@ -269,21 +280,40 @@ function getRuntimeAuthDiagnostics(errObj?: Record<string, unknown> | null): Rec
     );
   }
 
-  // Indisponibilidade do provedor ou falha de conexão (HTTP 503)
+  // Indisponibilidade do provedor ou falha de conexão (HTTP 503 / 529)
   if (
     status === 503 ||
     status === 502 ||
     status === 500 ||
+    status === 529 ||
     error instanceof AIServiceUnavailableError ||
     errorName === "APIConnectionError" ||
     errorName === "InternalServerError"
   ) {
+    const upstreamStatus = typeof errObj?.upstreamStatus === "number" ? errObj.upstreamStatus : status || 503;
+    const upstreamModel =
+      typeof errObj?.upstreamModel === "string"
+        ? errObj.upstreamModel
+        : process.env.ANTHROPIC_MODEL || "claude-3-5-haiku-20241022";
+
+    const headers: Record<string, string> = {
+      "x-ai-error-status": String(upstreamStatus),
+      "x-ai-error-name": String(errorName || "AIServiceUnavailableError"),
+      "x-ai-model": String(upstreamModel),
+    };
+
     return NextResponse.json(
       {
         error: "O serviço de inteligência artificial está temporariamente indisponível. Tente novamente em instantes.",
         code: "SERVICE_UNAVAILABLE",
+        upstreamStatus,
+        upstreamModel,
+        upstreamReason: safeMessage,
       },
-      { status: 503 }
+      {
+        status: 503,
+        headers,
+      }
     );
   }
 

@@ -187,6 +187,8 @@ export class AnthropicClientService implements IAIService {
       this.client = new Anthropic({
         apiKey: cleanKey,
         baseURL: "https://api.anthropic.com",
+        maxRetries: 1,
+        timeout: 15000,
       });
     }
   }
@@ -368,12 +370,41 @@ export class AnthropicClientService implements IAIService {
     const effectiveCorrelationId = correlationId || crypto.randomUUID();
 
     try {
-      const response = await this.client.messages.create({
-        model: this.model,
-        max_tokens: maxTokens,
-        system: AI_SYSTEM_INSTRUCTIONS,
-        messages: [{ role: "user", content: promptText }],
-      });
+      let response: any;
+      try {
+        response = await this.client.messages.create({
+          model: this.model,
+          max_tokens: maxTokens,
+          system: AI_SYSTEM_INSTRUCTIONS,
+          messages: [{ role: "user", content: promptText }],
+        });
+      } catch (firstErr: unknown) {
+        const errObj = firstErr as { status?: number; error?: { message?: string } };
+        const status = errObj?.status || 0;
+        const isOverloadedOrUnavailable = status === 529 || status === 503 || status === 500;
+
+        if (isOverloadedOrUnavailable) {
+          console.warn(
+            `[AnthropicClientService] Provedor retornou HTTP ${status} (Overloaded/Temporarily Unavailable). Executando contingência com cluster estável...`
+          );
+
+          // Se o modelo sobrecarregado for claude-3-5-haiku, recorre imediatamente a claude-3-haiku-20240307
+          const fallbackModel = this.model.includes("3-5-haiku")
+            ? "claude-3-haiku-20240307"
+            : this.model === "claude-3-haiku-20240307"
+            ? "claude-3-5-haiku-20241022"
+            : "claude-3-haiku-20240307";
+
+          response = await this.client.messages.create({
+            model: fallbackModel,
+            max_tokens: maxTokens,
+            system: AI_SYSTEM_INSTRUCTIONS,
+            messages: [{ role: "user", content: promptText }],
+          });
+        } else {
+          throw firstErr;
+        }
+      }
 
       const durationMs = Date.now() - startTime;
 
@@ -440,7 +471,9 @@ export class AnthropicClientService implements IAIService {
       }
 
       // Busca o bloco de texto real, suportando modelos que retornam blocos de thinking antes do texto
-      const textBlock = response.content.find((block) => block.type === "text");
+      const textBlock = response.content?.find(
+        (block: { type: string; text?: string }) => block.type === "text"
+      ) as { type: "text"; text: string } | undefined;
       if (textBlock && textBlock.type === "text") {
         const text = textBlock.text.trim();
         if (text) {
@@ -536,7 +569,15 @@ export class AnthropicClientService implements IAIService {
           throw reqErr;
         }
 
-        throw new AIServiceUnavailableError(safeErrorMsg);
+        const unavailableErr = new AIServiceUnavailableError(safeErrorMsg);
+        Object.assign(unavailableErr, {
+          status: errObj?.status || 503,
+          name: errObj?.name || "AIServiceUnavailableError",
+          upstreamModel: this.model,
+          upstreamStatus: errObj?.status || 503,
+          upstreamMessage: safeErrorMsg,
+        });
+        throw unavailableErr;
       }
 
       throw error;

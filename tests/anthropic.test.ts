@@ -345,6 +345,47 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
       const body = await response.json();
       expect(body.error).toContain("temporariamente indisponível");
     });
+
+    it("handleAIRouteError deve incluir upstreamStatus e cabeçalhos forenses no status 503", async () => {
+      const err = Object.assign(new Error("529 Overloaded"), {
+        status: 529,
+        name: "InternalServerError",
+        upstreamStatus: 529,
+        upstreamModel: "claude-3-5-haiku-20241022",
+      });
+      const response = handleAIRouteError(err);
+      expect(response.status).toBe(503);
+      expect(response.headers.get("x-ai-error-status")).toBe("529");
+      expect(response.headers.get("x-ai-model")).toBe("claude-3-5-haiku-20241022");
+
+      const body = await response.json();
+      expect(body.code).toBe("SERVICE_UNAVAILABLE");
+      expect(body.upstreamStatus).toBe(529);
+      expect(body.upstreamModel).toBe("claude-3-5-haiku-20241022");
+    });
+
+    it("AnthropicClientService deve realizar fallback automático de cluster para claude-3-haiku quando receber HTTP 529 (Overloaded)", async () => {
+      // Primeira chamada com 3.5 haiku rejeita com 529
+      mockCreate.mockRejectedValueOnce(
+        Object.assign(new Error("529 Overloaded"), { status: 529, name: "InternalServerError" })
+      );
+      // Segunda chamada com cluster alternativo claude-3-haiku-20240307 responde com sucesso
+      mockCreate.mockResolvedValueOnce({
+        id: "msg_fallback_123",
+        model: "claude-3-haiku-20240307",
+        content: [{ type: "text", text: "Resumo gerado pelo cluster estável do Claude." }],
+      });
+
+      const service = new AnthropicClientService("sk-ant-valid-key", "claude-3-5-haiku-20241022");
+      const result = await service.suggestSummary({
+        jobTitle: "Analista de SOC",
+        field: "Cibersegurança",
+      });
+
+      expect(result).toBe("Resumo gerado pelo cluster estável do Claude.");
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+      expect(mockCreate.mock.calls[1][0].model).toBe("claude-3-haiku-20240307");
+    });
   });
 
   describe("5. Contratos das Rotas HTTP (/api/ai/*)", () => {
