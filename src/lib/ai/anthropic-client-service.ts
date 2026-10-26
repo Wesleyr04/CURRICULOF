@@ -18,6 +18,7 @@ import { aiTelemetryService } from "./telemetry/service";
 import { AIOperationType, TokenUsage } from "./telemetry/types";
 
 export const VALID_ANTHROPIC_MODELS = new Set([
+  "claude-haiku-5-5",
   "claude-3-5-haiku-20241022",
   "claude-3-5-haiku-latest",
   "claude-3-haiku-20240307",
@@ -31,28 +32,31 @@ export const VALID_ANTHROPIC_MODELS = new Set([
 
 /**
  * Normaliza e valida identificadores de modelo para a API oficial da Anthropic.
- * Corrige com tolerância aliases e erros de digitação (ex: claude-haiku-5-5 -> claude-3-5-haiku-20241022).
+ * Corrige com tolerância aliases e erros de digitação, preservando modelos válidos da conta (ex: claude-haiku-5-5).
  */
 export function normalizeAnthropicModel(rawModel: string): string {
   const clean = (rawModel || "").replace(/[\r\n"']/g, "").trim().toLowerCase();
-  if (!clean) return "claude-3-5-haiku-20241022";
+  if (!clean) return "claude-haiku-5-5";
 
-  // Modelo oficial exato
+  // Modelo oficial ou homologado no workspace
   if (VALID_ANTHROPIC_MODELS.has(clean)) {
     return clean;
   }
 
   // Mapeamentos tolerantes de erros de digitação e variantes comuns
   if (clean.includes("haiku")) {
+    if (clean === "claude-haiku-5-5" || clean === "haiku-5-5") {
+      return "claude-haiku-5-5";
+    }
     if (
       clean.includes("3-5") ||
       clean.includes("3.5") ||
-      clean.includes("5-5") ||
-      clean.includes("5.5") ||
-      clean.includes("3_5") ||
-      clean.includes("5_5")
+      clean.includes("3_5")
     ) {
       return "claude-3-5-haiku-20241022";
+    }
+    if (clean.includes("5-5") || clean.includes("5.5") || clean.includes("5_5")) {
+      return "claude-haiku-5-5";
     }
     return "claude-3-haiku-20240307";
   }
@@ -237,12 +241,12 @@ export class AnthropicClientService implements IAIService {
       );
     }
 
-    // Regra 8: Modelo configurável via ANTHROPIC_MODEL (permite claude-3-5-haiku-latest, claude-3-7-sonnet-latest, etc.)
+    // Regra 8: Modelo configurável via ANTHROPIC_MODEL (permite claude-haiku-5-5, claude-3-5-haiku-latest, etc.)
     const envAnthropicModel =
       process.env.ANTHROPIC_MODEL ||
       process.env["MODELO_ANTRÓPICO"] ||
       process.env["MODELO_ANTROPICO"] ||
-      "claude-3-5-haiku-20241022";
+      "claude-haiku-5-5";
 
     const rawModel =
       model ||
@@ -452,7 +456,7 @@ export class AnthropicClientService implements IAIService {
 
   private async callAnthropic(
     promptText: string,
-    maxTokens: number = 800,
+    maxTokens: number = 3000,
     operationType: AIOperationType = "unknown",
     correlationId?: string
   ): Promise<string> {
@@ -468,11 +472,12 @@ export class AnthropicClientService implements IAIService {
     const effectiveCorrelationId = correlationId || crypto.randomUUID();
 
     // Helper interno para executar a chamada com respeito a Retry-After e contingência de cluster
-    const executeCallWithContingency = async (targetModel: string): Promise<any> => {
+    const executeCallWithContingency = async (targetModel: string, tokensOverride?: number): Promise<any> => {
+      const effectiveMaxTokens = tokensOverride || maxTokens;
       try {
         return await this.client!.messages.create({
           model: targetModel,
-          max_tokens: maxTokens,
+          max_tokens: effectiveMaxTokens,
           system: AI_SYSTEM_INSTRUCTIONS,
           messages: [{ role: "user", content: promptText }],
         });
@@ -512,7 +517,7 @@ export class AnthropicClientService implements IAIService {
               console.log(`[AnthropicClientService] Tentando modelo de contingência '${fallbackModel}'...`);
               const fallbackResponse = await this.client!.messages.create({
                 model: fallbackModel,
-                max_tokens: maxTokens,
+                max_tokens: effectiveMaxTokens,
                 system: AI_SYSTEM_INSTRUCTIONS,
                 messages: [{ role: "user", content: promptText }],
               });
@@ -563,7 +568,7 @@ export class AnthropicClientService implements IAIService {
               console.log(`[AnthropicClientService] Tentando modelo dinâmico auto-descoberto '${dynamicCandidate}'...`);
               const dynamicResponse = await this.client!.messages.create({
                 model: dynamicCandidate,
-                max_tokens: maxTokens,
+                max_tokens: effectiveMaxTokens,
                 system: AI_SYSTEM_INSTRUCTIONS,
                 messages: [{ role: "user", content: promptText }],
               });
@@ -619,7 +624,7 @@ export class AnthropicClientService implements IAIService {
 
         return await this.client!.messages.create({
           model: fallbackModel,
-          max_tokens: maxTokens,
+          max_tokens: effectiveMaxTokens,
           system: AI_SYSTEM_INSTRUCTIONS,
           messages: [{ role: "user", content: promptText }],
         });
@@ -645,7 +650,7 @@ export class AnthropicClientService implements IAIService {
       const textBlocks = contentBlocks.filter(
         (b: any): b is { type: "text"; text: string } => b?.type === "text" && typeof b?.text === "string"
       );
-      const fullText = textBlocks.map((b: any) => b.text).join("").trim();
+      let fullText = textBlocks.map((b: any) => b.text).join("").trim();
 
       const hasThinkingOnly = !fullText && contentBlocks.some((b: any) => b?.type === "thinking");
 
@@ -659,11 +664,11 @@ export class AnthropicClientService implements IAIService {
       // Se a resposta for válida na API, mas não contiver texto utilizável (ex: apenas thinking, tool_use ou vazio)
       if (!fullText) {
         console.warn(
-          `[AnthropicClientService] Resposta sem texto utilizável (stop_reason=${response?.stop_reason || "unknown"}, tool_use=${hasToolUse}, thinking=${hasThinkingOnly}). Executando no máximo 1 nova tentativa controlada...`
+          `[AnthropicClientService] Resposta sem texto utilizável (stop_reason=${response?.stop_reason || "unknown"}, tool_use=${hasToolUse}, thinking=${hasThinkingOnly}). Executando no máximo 1 nova tentativa controlada com 4000 tokens...`
         );
 
-        // Faz no máximo uma nova tentativa controlada (sem loop infinito)
-        response = await executeCallWithContingency(this.model);
+        // Faz no máximo uma nova tentativa controlada escalando para 4000 tokens para dar margem total a modelos com thinking
+        response = await executeCallWithContingency(this.model, 4000);
         const retryExtracted = extractContentText(response);
         fullText = retryExtracted.fullText;
         hasToolUse = retryExtracted.hasToolUse;
@@ -843,7 +848,7 @@ export class AnthropicClientService implements IAIService {
 
   async suggestSummary(params: AISuggestSummaryParams): Promise<string> {
     const prompt = buildSuggestSummaryPrompt(params);
-    return await this.callAnthropic(prompt, 800, "suggest-summary", params.correlationId);
+    return await this.callAnthropic(prompt, 3000, "suggest-summary", params.correlationId);
   }
 
   async improveText(params: AIImproveTextParams): Promise<string> {
@@ -851,7 +856,7 @@ export class AnthropicClientService implements IAIService {
     if (!raw) return "";
 
     const prompt = buildImproveTextPrompt(params);
-    return await this.callAnthropic(prompt, 800, "improve-text", params.correlationId);
+    return await this.callAnthropic(prompt, 3000, "improve-text", params.correlationId);
   }
 
   async improveFullResume(

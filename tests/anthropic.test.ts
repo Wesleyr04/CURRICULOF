@@ -230,7 +230,7 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           model: "claude-3-5-haiku-20241022",
-          max_tokens: 800,
+          max_tokens: 3000,
         })
       );
     });
@@ -783,8 +783,8 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
 
     // 6. Contingência de modelo e erro definitivo
     it("6a. Se o modelo configurado retornar NotFoundError (model not found), deve acionar contingência imediata para claude-3-haiku e concluir com sucesso", async () => {
-      // Normalização prévia de modelo corrige claude-haiku-5-5 para oficial
-      expect(normalizeAnthropicModel("claude-haiku-5-5")).toBe("claude-3-5-haiku-20241022");
+      // Normalização prévia de modelo preserva claude-haiku-5-5 como homologado e normaliza aliases
+      expect(normalizeAnthropicModel("claude-haiku-5-5")).toBe("claude-haiku-5-5");
       expect(normalizeAnthropicModel("claude-3.5-haiku")).toBe("claude-3-5-haiku-20241022");
       expect(normalizeAnthropicModel("claude-haiku")).toBe("claude-3-haiku-20240307");
 
