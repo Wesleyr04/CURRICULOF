@@ -283,7 +283,12 @@ export class MockAIService implements IAIService {
     return formattedBullets.join("\n");
   }
 
-  async improveFullResume(resumeData: ResumeData, mode?: CreationMode): Promise<ResumeData> {
+  async improveFullResume(
+    resumeData: ResumeData,
+    mode?: CreationMode,
+    _correlationId?: string,
+    options?: { preserveSummary?: boolean }
+  ): Promise<ResumeData> {
     const activeMode = mode || resumeData.creationMode || "simple";
     const updated = JSON.parse(JSON.stringify(resumeData)) as ResumeData;
     updated.creationMode = activeMode;
@@ -292,24 +297,26 @@ export class MockAIService implements IAIService {
       updated.target.jobTitle = normalizeJobTitle(updated.target.jobTitle);
     }
 
-    // Aprimora ou gera o resumo usando todo o histórico das etapas anteriores
     const effectiveJobTitle = updated.target.jobTitle || updated.experiences[0]?.role || "Profissional";
     const effectiveField = updated.target.field || effectiveJobTitle;
 
-    updated.target.summary = await this.suggestSummary({
-      jobTitle: effectiveJobTitle,
-      field: effectiveField,
-      careerStage: updated.target.careerStage,
-      careerContext: updated.target.careerContext,
-      currentSummary: updated.target.summary && updated.target.summary.trim().length > 10 ? updated.target.summary.trim() : undefined,
-      experiences: updated.experiences,
-      skills: updated.technicalSkills,
-      softSkills: updated.softSkills,
-      education: updated.education,
-      courses: updated.courses,
-      certifications: updated.certifications,
-      mode: activeMode,
-    });
+    // Aprimora ou gera o resumo usando todo o histórico das etapas anteriores
+    if (!options?.preserveSummary) {
+      updated.target.summary = await this.suggestSummary({
+        jobTitle: effectiveJobTitle,
+        field: effectiveField,
+        careerStage: updated.target.careerStage,
+        careerContext: updated.target.careerContext,
+        currentSummary: updated.target.summary && updated.target.summary.trim().length > 10 ? updated.target.summary.trim() : undefined,
+        experiences: updated.experiences,
+        skills: updated.technicalSkills,
+        softSkills: updated.softSkills,
+        education: updated.education,
+        courses: updated.courses,
+        certifications: updated.certifications,
+        mode: activeMode,
+      });
+    }
 
     for (const exp of updated.experiences) {
       if (exp.role) {

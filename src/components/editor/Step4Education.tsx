@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { EducationItem, EducationStatus, CreationMode } from "@/types/resume";
-import { Plus, Trash2, ArrowLeft, ArrowRight, GraduationCap } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, ArrowRight, GraduationCap, AlertCircle } from "lucide-react";
 
 interface Step4Props {
   education: EducationItem[];
@@ -13,6 +13,9 @@ interface Step4Props {
 }
 
 export function Step4Education({ education, onChange, onNext, onPrev }: Step4Props) {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitBanner, setSubmitBanner] = useState<string | null>(null);
+
   const addEducation = () => {
     const newEdu: EducationItem = {
       id: `edu-${Date.now()}`,
@@ -27,6 +30,13 @@ export function Step4Education({ education, onChange, onNext, onPrev }: Step4Pro
   };
 
   const removeEducation = (id: string) => {
+    if (errors[`endDate-${id}`]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[`endDate-${id}`];
+        return next;
+      });
+    }
     onChange(education.filter((e) => e.id !== id));
   };
 
@@ -35,9 +45,67 @@ export function Step4Education({ education, onChange, onNext, onPrev }: Step4Pro
     field: K,
     value: EducationItem[K]
   ) => {
+    if (field === "endDate" || field === "status") {
+      if (errors[`endDate-${id}`]) {
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next[`endDate-${id}`];
+          return next;
+        });
+      }
+      if (submitBanner) {
+        setSubmitBanner(null);
+      }
+    }
     onChange(
       education.map((edu) => (edu.id === id ? { ...edu, [field]: value } : edu))
     );
+  };
+
+  const handleNext = () => {
+    const newErrors: Record<string, string> = {};
+    const currentYear = new Date().getFullYear();
+
+    education.forEach((edu) => {
+      if (edu.status === "concluido") {
+        const year = (edu.endDate || "").trim();
+        if (!year) {
+          newErrors[`endDate-${edu.id}`] = "Informe o ano de conclusão para esta formação concluída.";
+        } else {
+          const isValid = /^\d{4}$/.test(year);
+          const num = parseInt(year, 10);
+          if (!isValid || num < 1950 || num > currentYear + 1) {
+            newErrors[`endDate-${edu.id}`] = "Informe um ano de conclusão válido com 4 dígitos (ex: 2022).";
+          }
+        }
+      } else if (edu.status === "cursando") {
+        const year = (edu.endDate || "").trim();
+        if (year) {
+          const isValid = /^\d{4}$/.test(year);
+          const num = parseInt(year, 10);
+          if (!isValid || num < 1950 || num > currentYear + 15) {
+            newErrors[`endDate-${edu.id}`] = "Previsão de conclusão deve ser um ano válido com 4 dígitos (ex: 2026).";
+          }
+        }
+      }
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setSubmitBanner("Por favor, preencha o ano de conclusão das formações concluídas destacadas abaixo.");
+      const firstErrorKey = Object.keys(newErrors)[0];
+      const targetId = `edu-${firstErrorKey}`;
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.focus();
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+
+    setErrors({});
+    setSubmitBanner(null);
+    onNext();
   };
 
   return (
@@ -61,6 +129,18 @@ export function Step4Education({ education, onChange, onNext, onPrev }: Step4Pro
           <span>Adicionar Formação</span>
         </button>
       </div>
+
+      {/* Banner de Erros de Submissão Inline */}
+      {submitBanner && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="p-3.5 bg-rose-50 border border-rose-300 rounded-xl flex items-center gap-2.5 text-xs text-rose-900 shadow-2xs animate-in fade-in duration-200"
+        >
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span className="font-medium">{submitBanner}</span>
+        </div>
+      )}
 
       {education.length === 0 ? (
         <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300">
@@ -190,16 +270,57 @@ export function Step4Education({ education, onChange, onNext, onPrev }: Step4Pro
                 {/* Data Fim */}
                 <div>
                   <label htmlFor={`edu-endDate-${edu.id}`} className="block text-xs font-bold text-slate-700 mb-1">
-                    Previsão ou Ano de Conclusão
+                    {edu.status === "concluido" ? (
+                      <>
+                        Ano de Conclusão <span className="text-rose-600">*</span>
+                      </>
+                    ) : edu.status === "cursando" ? (
+                      <>
+                        Previsão de Conclusão <span className="text-slate-400 font-normal">(Opcional)</span>
+                      </>
+                    ) : (
+                      <>
+                        Ano de Término / Saída <span className="text-slate-400 font-normal">(Opcional)</span>
+                      </>
+                    )}
                   </label>
                   <input
                     id={`edu-endDate-${edu.id}`}
                     type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    required={edu.status === "concluido"}
+                    aria-required={edu.status === "concluido"}
+                    aria-invalid={Boolean(errors[`endDate-${edu.id}`])}
+                    aria-describedby={errors[`endDate-${edu.id}`] ? `error-endDate-${edu.id}` : undefined}
                     value={edu.endDate}
-                    onChange={(e) => updateEducation(edu.id, "endDate", e.target.value)}
-                    placeholder="Ex: 2024"
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-800 text-slate-900"
+                    onChange={(e) => {
+                      const numericOnly = e.target.value.replace(/\D/g, "");
+                      updateEducation(edu.id, "endDate", numericOnly);
+                    }}
+                    placeholder={
+                      edu.status === "concluido"
+                        ? "Ex: 2023"
+                        : edu.status === "cursando"
+                        ? "Ex: 2026"
+                        : "Ex: 2022"
+                    }
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:outline-none focus:ring-2 text-slate-900 transition-colors ${
+                      errors[`endDate-${edu.id}`]
+                        ? "border-rose-400 focus:ring-rose-500 bg-rose-50/20"
+                        : "border-slate-300 focus:ring-blue-800"
+                    }`}
                   />
+                  {errors[`endDate-${edu.id}`] && (
+                    <p
+                      id={`error-endDate-${edu.id}`}
+                      role="alert"
+                      className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1"
+                    >
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{errors[`endDate-${edu.id}`]}</span>
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -220,7 +341,7 @@ export function Step4Education({ education, onChange, onNext, onPrev }: Step4Pro
 
         <button
           type="button"
-          onClick={onNext}
+          onClick={handleNext}
           className="px-6 py-2.5 text-sm font-bold text-white bg-blue-900 hover:bg-blue-800 rounded-lg shadow-xs transition-all flex items-center gap-1"
         >
           <span>Avançar para Habilidades & Cursos</span>

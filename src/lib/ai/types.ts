@@ -46,6 +46,7 @@ export interface IAIService {
   improveFullResume(
     resumeData: ResumeData,
     mode?: CreationMode,
-    correlationId?: string
+    correlationId?: string,
+    options?: { preserveSummary?: boolean }
   ): Promise<ResumeData>;
 }

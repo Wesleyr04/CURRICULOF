@@ -862,7 +862,8 @@ export class AnthropicClientService implements IAIService {
   async improveFullResume(
     resumeData: ResumeData,
     mode?: CreationMode,
-    correlationId?: string
+    correlationId?: string,
+    options?: { preserveSummary?: boolean }
   ): Promise<ResumeData> {
     const activeMode = mode || resumeData.creationMode || "simple";
     const fullGenCorrelationId = correlationId || crypto.randomUUID();
@@ -875,38 +876,41 @@ export class AnthropicClientService implements IAIService {
     }
 
     // 1. Aprimora ou gera o Resumo Profissional conectando todo o histórico do candidato (experiências, habilidades, cursos)
-    const effectiveJobTitle = updated.target.jobTitle || updated.experiences[0]?.role || "Profissional";
-    const effectiveField = updated.target.field || effectiveJobTitle;
+    // Se preserveSummary for solicitado, preserva o resumo já lapidado/aprovado na Etapa 6 e economiza 100% dos tokens de resumo.
+    if (!options?.preserveSummary) {
+      const effectiveJobTitle = updated.target.jobTitle || updated.experiences[0]?.role || "Profissional";
+      const effectiveField = updated.target.field || effectiveJobTitle;
 
-    try {
-      const enrichedSummary = await this.suggestSummary({
-        jobTitle: effectiveJobTitle,
-        field: effectiveField,
-        careerStage: updated.target.careerStage,
-        careerContext: updated.target.careerContext,
-        currentSummary:
-          updated.target.summary && updated.target.summary.trim().length > 10
-            ? updated.target.summary.trim()
-            : undefined,
-        experiences: updated.experiences,
-        skills: updated.technicalSkills,
-        softSkills: updated.softSkills,
-        education: updated.education,
-        courses: updated.courses,
-        certifications: updated.certifications,
-        mode: activeMode,
-        correlationId: fullGenCorrelationId,
-      });
+      try {
+        const enrichedSummary = await this.suggestSummary({
+          jobTitle: effectiveJobTitle,
+          field: effectiveField,
+          careerStage: updated.target.careerStage,
+          careerContext: updated.target.careerContext,
+          currentSummary:
+            updated.target.summary && updated.target.summary.trim().length > 10
+              ? updated.target.summary.trim()
+              : undefined,
+          experiences: updated.experiences,
+          skills: updated.technicalSkills,
+          softSkills: updated.softSkills,
+          education: updated.education,
+          courses: updated.courses,
+          certifications: updated.certifications,
+          mode: activeMode,
+          correlationId: fullGenCorrelationId,
+        });
 
-      if (enrichedSummary && enrichedSummary.trim()) {
-        updated.target.summary = enrichedSummary.trim();
+        if (enrichedSummary && enrichedSummary.trim()) {
+          updated.target.summary = enrichedSummary.trim();
+        }
+      } catch (summaryErr) {
+        // Preserva o resumo original se houver falha específica na chamada de resumo
+        console.warn(
+          "[AnthropicClientService] Falha ao enriquecer resumo na revisão geral, preservando resumo original:",
+          summaryErr
+        );
       }
-    } catch (summaryErr) {
-      // Preserva o resumo original se houver falha específica na chamada de resumo
-      console.warn(
-        "[AnthropicClientService] Falha ao enriquecer resumo na revisão geral, preservando resumo original:",
-        summaryErr
-      );
     }
 
     // 2. Aprimora atividades de cada experiência em paralelo resiliente (reduz latência serverless e evita timeouts)

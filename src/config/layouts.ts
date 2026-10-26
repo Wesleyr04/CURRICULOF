@@ -229,6 +229,7 @@ export const EMPTY_RESUME_DATA: ResumeData = {
     phone: "",
     city: "",
     state: "",
+    age: "",
     linkedin: "",
     portfolio: "",
   },

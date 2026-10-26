@@ -6,6 +6,18 @@ export const PersonalInfoSchema = z.object({
   phone: z.string().min(8, "Telefone inválido").max(25),
   city: z.string().min(2, "Cidade é obrigatória").max(60),
   state: z.string().min(2, "Estado (UF) é obrigatório").max(30),
+  age: z
+    .string()
+    .refine(
+      (val) => {
+        if (!val || val.trim() === "") return true;
+        const num = Number(val.trim());
+        return Number.isInteger(num) && num >= 14 && num <= 100;
+      },
+      { message: "A idade deve ser um número inteiro entre 14 e 100 anos" }
+    )
+    .optional()
+    .default(""),
   linkedin: z.string().url("URL do LinkedIn inválida").or(z.literal("")).optional(),
   portfolio: z.string().url("URL de portfólio inválida").or(z.literal("")).optional(),
   photoUrl: z.string().optional(),
@@ -32,15 +44,53 @@ export const ExperienceItemSchema = z.object({
   achievements: z.string().max(800).optional(),
 });
 
-export const EducationItemSchema = z.object({
-  id: z.string(),
-  institution: z.string().min(2, "Instituição obrigatória").max(100),
-  course: z.string().min(2, "Curso obrigatório").max(100),
-  degree: z.string().min(2, "Grau/Modalidade obrigatório").max(50),
-  status: z.enum(["concluido", "cursando", "incompleto"]),
-  startDate: z.string().max(30).optional().default(""),
-  endDate: z.string().max(30).optional().default(""),
-});
+export const EducationItemSchema = z
+  .object({
+    id: z.string(),
+    institution: z.string().min(2, "Instituição obrigatória").max(100),
+    course: z.string().min(2, "Curso obrigatório").max(100),
+    degree: z.string().min(2, "Grau/Modalidade obrigatório").max(50),
+    status: z.enum(["concluido", "cursando", "incompleto"]),
+    startDate: z.string().max(30).optional().default(""),
+    endDate: z.string().max(30).optional().default(""),
+  })
+  .superRefine((data, ctx) => {
+    if (data.status === "concluido") {
+      const cleanYear = (data.endDate || "").trim();
+      if (!cleanYear) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Informe o ano de conclusão para formações concluídas.",
+          path: ["endDate"],
+        });
+        return;
+      }
+      const isValidFormat = /^\d{4}$/.test(cleanYear);
+      const yearNum = parseInt(cleanYear, 10);
+      const currentYear = new Date().getFullYear();
+      if (!isValidFormat || yearNum < 1950 || yearNum > currentYear + 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Informe um ano de conclusão válido com 4 dígitos (ex: 2022).",
+          path: ["endDate"],
+        });
+      }
+    } else if (data.status === "cursando") {
+      const cleanYear = (data.endDate || "").trim();
+      if (cleanYear) {
+        const isValidFormat = /^\d{4}$/.test(cleanYear);
+        const yearNum = parseInt(cleanYear, 10);
+        const currentYear = new Date().getFullYear();
+        if (!isValidFormat || yearNum < 1950 || yearNum > currentYear + 15) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Previsão de conclusão deve ser um ano válido com 4 dígitos (ex: 2026).",
+            path: ["endDate"],
+          });
+        }
+      }
+    }
+  });
 
 export const CourseItemSchema = z.object({
   id: z.string(),

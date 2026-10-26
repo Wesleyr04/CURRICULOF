@@ -190,11 +190,14 @@ export async function POST(req: NextRequest) {
         ? body.correlationId
         : undefined);
 
+    const preserveSummary = Boolean(body?.preserveSummary);
+
     const ai = getAIService();
     const improvedResume = await ai.improveFullResume(
       parsed.data,
       parsed.data.creationMode,
-      correlationId
+      correlationId,
+      { preserveSummary }
     );
 
     // Preserva os dados pessoais reais originais informados pelo usuário na tela
@@ -203,6 +206,10 @@ export async function POST(req: NextRequest) {
       personal: {
         ...rawPersonal,
         fullName: typeof rawPersonal.fullName === "string" && rawPersonal.fullName.trim() ? rawPersonal.fullName : improvedResume.personal.fullName,
+      },
+      target: {
+        ...improvedResume.target,
+        summary: preserveSummary ? (rawTarget.summary || parsed.data.target.summary) : improvedResume.target.summary,
       },
       customization: {
         ...rawCustomization,

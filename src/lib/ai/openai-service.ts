@@ -60,26 +60,33 @@ export class OpenAIService implements IAIService {
     return this.callChat([{ role: "user", content: prompt }]);
   }
 
-  async improveFullResume(resumeData: ResumeData, mode?: CreationMode): Promise<ResumeData> {
+  async improveFullResume(
+    resumeData: ResumeData,
+    mode?: CreationMode,
+    _correlationId?: string,
+    options?: { preserveSummary?: boolean }
+  ): Promise<ResumeData> {
     const activeMode = mode || resumeData.creationMode || "simple";
     const updated = JSON.parse(JSON.stringify(resumeData)) as ResumeData;
     updated.creationMode = activeMode;
 
-    if (updated.target.summary) {
-      updated.target.summary = await this.improveText({
-        rawText: updated.target.summary,
-        context: "summary",
-        jobTitle: updated.target.jobTitle,
-        mode: activeMode,
-      });
-    } else {
-      updated.target.summary = await this.suggestSummary({
-        jobTitle: updated.target.jobTitle,
-        field: updated.target.field,
-        experiences: updated.experiences,
-        skills: updated.technicalSkills,
-        mode: activeMode,
-      });
+    if (!options?.preserveSummary) {
+      if (updated.target.summary) {
+        updated.target.summary = await this.improveText({
+          rawText: updated.target.summary,
+          context: "summary",
+          jobTitle: updated.target.jobTitle,
+          mode: activeMode,
+        });
+      } else {
+        updated.target.summary = await this.suggestSummary({
+          jobTitle: updated.target.jobTitle,
+          field: updated.target.field,
+          experiences: updated.experiences,
+          skills: updated.technicalSkills,
+          mode: activeMode,
+        });
+      }
     }
 
     for (const exp of updated.experiences) {

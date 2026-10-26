@@ -116,27 +116,18 @@ export function Step6Review({
   const carouselRef = useRef<HTMLDivElement>(null);
   const { customization } = resumeData;
 
-  const hasInitializedFromContextRef = useRef(false);
+  // Refs para controle de concorrência e cancelamento de requisições em voo no campo "Sobre você"
+  const summaryAbortControllerRef = useRef<AbortController | null>(null);
+  const summaryVersionRef = useRef<number>(0);
 
-  // Ponte Automática Etapa 2 -> Etapa 6:
-  // Se o usuário preencheu o contexto na Etapa 2 e a seção 'Sobre você' estiver vazia,
-  // pré-popula automaticamente com o rascunho de contexto para o usuário não ter que digitar do zero.
+  // Cancela requisições assíncronas ativas caso o componente seja desmontado
   useEffect(() => {
-    if (hasInitializedFromContextRef.current) return;
-    const currentSummary = (resumeData.target.summary || "").trim();
-    const contextFromStep2 = (resumeData.target.careerContext || "").trim();
-
-    if (!currentSummary && contextFromStep2) {
-      hasInitializedFromContextRef.current = true;
-      onApplyAiImprovement({
-        ...resumeData,
-        target: {
-          ...resumeData.target,
-          summary: contextFromStep2,
-        },
-      });
-    }
-  }, [onApplyAiImprovement, resumeData]);
+    return () => {
+      if (summaryAbortControllerRef.current) {
+        summaryAbortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const scrollToSlide = (index: number) => {
     setActiveSlide(index);
@@ -187,6 +178,15 @@ export function Step6Review({
 
   const handleGenerateStrategicSummary = async () => {
     if (loadingSummaryAi) return;
+
+    // Cancela qualquer requisição prévia de geração em andamento
+    if (summaryAbortControllerRef.current) {
+      summaryAbortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    summaryAbortControllerRef.current = abortController;
+    const requestVersion = ++summaryVersionRef.current;
+
     setLoadingSummaryAi(true);
     setSummaryAiError(null);
 
@@ -265,6 +265,7 @@ export function Step6Review({
       const res = await fetch("/api/ai/suggest-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: abortController.signal,
         body: JSON.stringify({
           jobTitle: cleanJob,
           field: resumeData.target.field?.trim() || cleanJob,
@@ -286,12 +287,18 @@ export function Step6Review({
         const detailedMsg =
           errorData?.error ||
           (res.status === 401
-            ? "Falha de autenticação com o provedor de IA. Verifique as credenciais no servidor."
+            ? "Falha de autenticação no servidor. Verifique as credenciais."
             : "Falha ao comunicar com o serviço Fast.");
         throw new Error(detailedMsg);
       }
 
       const result = await res.json();
+
+      // Se o usuário digitou ou limpou o campo enquanto a chamada estava em voo, descarta a resposta
+      if (summaryVersionRef.current !== requestVersion) {
+        return;
+      }
+
       const generatedSummary = (result.summary || "").trim();
 
       if (!generatedSummary || isAiRefusal(generatedSummary)) {
@@ -312,9 +319,15 @@ export function Step6Review({
       setAiSuccessMessage("Apresentação 'Sobre você' gerada com sucesso pelo Fast, combinando seu histórico completo!");
       setTimeout(() => setAiSuccessMessage(null), 8000);
     } catch (err: unknown) {
+      // Ignora erros causados por abort intencional
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
       setSummaryAiError(sanitizeAiErrorMessage(err));
     } finally {
-      setLoadingSummaryAi(false);
+      if (summaryVersionRef.current === requestVersion) {
+        setLoadingSummaryAi(false);
+      }
     }
   };
 
@@ -325,18 +338,21 @@ export function Step6Review({
     setFullAiError(null);
 
     const backup = JSON.parse(JSON.stringify(resumeData)) as ResumeData;
+    const currentSummaryText = (resumeData.target.summary || "").trim();
+    // Otimização: se o usuário já possui um texto no Sobre você (> 10 caracteres), preserva e economiza 100% dos tokens de resumo
+    const hasValidSummary = currentSummaryText.length > 10;
 
     try {
       // Limpa dados vazios para evitar rejeições acidentais no backend
-      const sanitizedPayload: ResumeData = {
+      const sanitizedPayload = {
         ...resumeData,
         target: {
           ...resumeData.target,
-          // Se summary ainda estiver vazio, envia o contexto da Etapa 2 para a IA estruturar
           summary:
-            (resumeData.target.summary || "").trim() ||
+            currentSummaryText ||
             (resumeData.target.careerContext || "").trim(),
         },
+        preserveSummary: hasValidSummary,
         experiences: (resumeData.experiences || []).filter(
           (e) => (e.role && e.role.trim()) || (e.company && e.company.trim()) || (e.description && e.description.trim())
         ),
@@ -358,8 +374,16 @@ export function Step6Review({
 
       const result = await res.json();
       if (result.resume) {
+        const mergedResume: ResumeData = {
+          ...result.resume,
+          target: {
+            ...result.resume.target,
+            // Se o usuário já possuía o "Sobre você" aprovado/preenchido, preserva intacto
+            summary: hasValidSummary ? currentSummaryText : result.resume.target.summary,
+          },
+        };
         setPreviousResumeData(backup);
-        onApplyAiImprovement(result.resume);
+        onApplyAiImprovement(mergedResume);
         setAiSuccessMessage("Redação e perfil profissional aprimorados com sucesso pelo Fast, com termos corporativos e normalização!");
         setTimeout(() => setAiSuccessMessage(null), 8000);
       }
@@ -682,6 +706,12 @@ export function Step6Review({
                   rows={5}
                   value={resumeData.target.summary || ""}
                   onChange={(e) => {
+                    summaryVersionRef.current += 1;
+                    if (summaryAbortControllerRef.current) {
+                      summaryAbortControllerRef.current.abort();
+                      summaryAbortControllerRef.current = null;
+                      setLoadingSummaryAi(false);
+                    }
                     setSummaryAiError(null);
                     onApplyAiImprovement({
                       ...resumeData,
@@ -740,7 +770,7 @@ export function Step6Review({
                 Revisar e Profissionalizar Toda a Redação
               </h4>
               <p className="text-[11px] text-blue-100 leading-relaxed">
-                O Fast vai aprimorar todo o currículo: gera ou enriquece a seção &quot;Sobre você&quot; (usando seu contexto da Etapa 2 e formação), padroniza o cargo pretendido e converte experiências em tópicos de ação de alto impacto para triagem ATS. Funciona tanto para profissionais com histórico quanto para Primeiro Emprego e Estágio.
+                O Fast vai aprimorar todo o currículo: preserva sua apresentação da seção &quot;Sobre você&quot;, padroniza o cargo pretendido e converte experiências em tópicos de ação de alto impacto para triagem ATS. Funciona tanto para profissionais com histórico quanto para Primeiro Emprego e Estágio.
               </p>
 
               <div className="pt-1">

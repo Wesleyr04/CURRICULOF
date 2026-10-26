@@ -24,6 +24,7 @@ export interface PersonalInfo {
   phone: string;
   city: string;
   state: string;
+  age?: string;
   linkedin?: string;
   portfolio?: string;
   photoUrl?: string; // data URL or memory URL

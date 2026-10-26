@@ -69,7 +69,12 @@ export class GeminiAIService implements IAIService {
     return this.callGemini(prompt);
   }
 
-  async improveFullResume(resumeData: ResumeData, mode?: CreationMode): Promise<ResumeData> {
+  async improveFullResume(
+    resumeData: ResumeData,
+    mode?: CreationMode,
+    _correlationId?: string,
+    options?: { preserveSummary?: boolean }
+  ): Promise<ResumeData> {
     const activeMode = mode || resumeData.creationMode || "simple";
     const prompt = `${AI_SYSTEM_INSTRUCTIONS}
 ${activeMode === "simple" ? "DIRETRIZ MODO SIMPLES: Seja extremamente enxuto e conciso." : "DIRETRIZ MODO COMPLETO: Apresente descrições estruturadas e detalhadas."}
@@ -95,7 +100,7 @@ Retorne APENAS o JSON puro, sem crases de código markdown.`;
       const parsed = JSON.parse(cleaned);
       const updated = JSON.parse(JSON.stringify(resumeData)) as ResumeData;
 
-      if (parsed.targetSummary) {
+      if (parsed.targetSummary && !options?.preserveSummary) {
         updated.target.summary = parsed.targetSummary;
       }
 

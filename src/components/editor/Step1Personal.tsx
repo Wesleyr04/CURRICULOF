@@ -47,6 +47,13 @@ export function Step1Personal({ data, mode = "simple", onChange, onNext }: Step1
     if (!data.city.trim()) newErrors.city = "Informe a cidade onde você reside.";
     if (!data.state.trim()) newErrors.state = "Informe a UF (ex: SP).";
 
+    if (data.age && data.age.trim()) {
+      const ageNum = parseInt(data.age.trim(), 10);
+      if (isNaN(ageNum) || ageNum < 14 || ageNum > 100) {
+        newErrors.age = "Informe uma idade válida entre 14 e 100 anos.";
+      }
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setSubmitErrorBanner("Por favor, preencha os campos obrigatórios destacados abaixo para avançar.");
@@ -222,34 +229,69 @@ export function Step1Personal({ data, mode = "simple", onChange, onNext }: Step1
           )}
         </div>
 
-        {/* Estado (UF) */}
-        <div>
-          <label htmlFor="state" className="block text-xs font-bold text-slate-700 mb-1">
-            Estado (UF) <span className="text-rose-600">*</span>
-          </label>
-          <input
-            id="state"
-            type="text"
-            required
-            maxLength={2}
-            aria-required="true"
-            aria-invalid={Boolean(errors.state)}
-            aria-describedby={errors.state ? "error-state" : undefined}
-            value={data.state}
-            onChange={(e) => updateField("state", e.target.value.toUpperCase())}
-            placeholder="Ex: SP"
-            className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:outline-none focus:ring-2 uppercase text-slate-900 transition-colors ${
-              errors.state
-                ? "border-rose-400 focus:ring-rose-500 bg-rose-50/20"
-                : "border-slate-300 focus:ring-blue-800"
-            }`}
-          />
-          {errors.state && (
-            <p id="error-state" role="alert" className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3 shrink-0" />
-              <span>{errors.state}</span>
-            </p>
-          )}
+        {/* Estado (UF) e Idade */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Estado (UF) */}
+          <div>
+            <label htmlFor="state" className="block text-xs font-bold text-slate-700 mb-1">
+              Estado (UF) <span className="text-rose-600">*</span>
+            </label>
+            <input
+              id="state"
+              type="text"
+              required
+              maxLength={2}
+              aria-required="true"
+              aria-invalid={Boolean(errors.state)}
+              aria-describedby={errors.state ? "error-state" : undefined}
+              value={data.state}
+              onChange={(e) => updateField("state", e.target.value.toUpperCase())}
+              placeholder="Ex: SP"
+              className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:outline-none focus:ring-2 uppercase text-slate-900 transition-colors ${
+                errors.state
+                  ? "border-rose-400 focus:ring-rose-500 bg-rose-50/20"
+                  : "border-slate-300 focus:ring-blue-800"
+              }`}
+            />
+            {errors.state && (
+              <p id="error-state" role="alert" className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                <span>{errors.state}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Idade (Opcional) */}
+          <div>
+            <label htmlFor="age" className="block text-xs font-bold text-slate-700 mb-1">
+              Idade <span className="text-slate-400 font-normal">(Opcional)</span>
+            </label>
+            <input
+              id="age"
+              type="text"
+              inputMode="numeric"
+              maxLength={3}
+              aria-invalid={Boolean(errors.age)}
+              aria-describedby={errors.age ? "error-age" : undefined}
+              value={data.age || ""}
+              onChange={(e) => {
+                const numericOnly = e.target.value.replace(/\D/g, "");
+                updateField("age", numericOnly);
+              }}
+              placeholder="Ex: 28"
+              className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:outline-none focus:ring-2 text-slate-900 transition-colors ${
+                errors.age
+                  ? "border-rose-400 focus:ring-rose-500 bg-rose-50/20"
+                  : "border-slate-300 focus:ring-blue-800"
+              }`}
+            />
+            {errors.age && (
+              <p id="error-age" role="alert" className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                <span>{errors.age}</span>
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Links opcionais: modo completo ou se expandido */}
