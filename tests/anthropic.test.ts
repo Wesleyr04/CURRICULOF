@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getAIService } from "@/lib/ai/factory";
-import { AnthropicClientService } from "@/lib/ai/anthropic-client-service";
+import { AnthropicClientService, normalizeAnthropicModel, parseRetryAfterMs } from "@/lib/ai/anthropic-client-service";
 import { MockAIService } from "@/lib/ai/mock-service";
 import {
   AIConfigurationError,
+  AIEmptyResponseError,
   handleAIRouteError,
 } from "@/lib/ai/errors";
 import { INITIAL_RESUME_DATA } from "@/config/layouts";
@@ -226,7 +227,7 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           model: "claude-3-5-haiku-20241022",
-          max_tokens: 500,
+          max_tokens: 800,
         })
       );
     });
@@ -285,7 +286,7 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
     });
 
     it("deve lançar erro se a Anthropic retornar bloco de resposta sem texto", async () => {
-      mockCreate.mockResolvedValueOnce({
+      mockCreate.mockResolvedValue({
         content: [],
       });
 
@@ -654,6 +655,184 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
         false
       );
       expect(antService.providerName).toBe("Anthropic Claude (Oficial)");
+    });
+  });
+
+  describe("6. Suíte de Testes Obrigatórios de Confiabilidade da Resposta Anthropic", () => {
+    // 1. Resposta com um bloco de texto
+    it("1. Resposta com um bloco de texto deve extrair e retornar o texto puro", async () => {
+      mockCreate.mockResolvedValueOnce({
+        id: "msg_single_block_1",
+        model: "claude-3-5-haiku-20241022",
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "Profissional especializado em segurança da informação e monitoramento de SOC." }],
+      });
+
+      const service = new AnthropicClientService("sk-ant-valid-key", "claude-3-5-haiku-20241022");
+      const result = await service.suggestSummary({
+        jobTitle: "Analista de SOC",
+        field: "Segurança",
+      });
+
+      expect(result).toBe("Profissional especializado em segurança da informação e monitoramento de SOC.");
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+    });
+
+    // 2. Resposta com vários blocos de texto (concatenando todos)
+    it("2. Resposta com vários blocos de texto deve concatenar todos os blocos válidos preservando a ordem", async () => {
+      mockCreate.mockResolvedValueOnce({
+        id: "msg_multi_block_1",
+        model: "claude-3-5-haiku-20241022",
+        stop_reason: "end_turn",
+        content: [
+          { type: "thinking", thinking: "Raciocinando sobre o perfil do candidato..." },
+          { type: "text", text: "Especialista em resposta a incidentes e inteligência contra ameaças. " },
+          { type: "text", text: "Atuação destacada em monitoramento SIEM e análise forense." },
+        ],
+      });
+
+      const service = new AnthropicClientService("sk-ant-valid-key", "claude-3-5-haiku-20241022");
+      const result = await service.suggestSummary({
+        jobTitle: "Especialista em Cibersegurança",
+        field: "Segurança Ofensiva",
+      });
+
+      expect(result).toBe("Especialista em resposta a incidentes e inteligência contra ameaças. Atuação destacada em monitoramento SIEM e análise forense.");
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+    });
+
+    // 3. Resposta sem texto utilizável (deve fazer no máximo 1 retry e lançar AIEmptyResponseError sem 503)
+    it("3. Resposta sem texto utilizável (ex: apenas thinking) deve retentar 1 vez e lançar AIEmptyResponseError", async () => {
+      // Primeira chamada: apenas thinking sem texto
+      mockCreate.mockResolvedValueOnce({
+        id: "msg_thinking_only_1",
+        model: "claude-3-5-haiku-20241022",
+        stop_reason: "end_turn",
+        content: [{ type: "thinking", thinking: "Pensamento sem texto final..." }],
+      });
+      // Segunda chamada (retry): ainda sem texto utilizável
+      mockCreate.mockResolvedValueOnce({
+        id: "msg_thinking_only_2",
+        model: "claude-3-5-haiku-20241022",
+        stop_reason: "end_turn",
+        content: [],
+      });
+
+      const service = new AnthropicClientService("sk-ant-valid-key", "claude-3-5-haiku-20241022");
+      await expect(
+        service.suggestSummary({
+          jobTitle: "Engenheiro de Redes",
+          field: "Infraestrutura",
+        })
+      ).rejects.toThrow(AIEmptyResponseError);
+
+      // Exatamente 2 tentativas (1 inicial + 1 retry controlado, sem loop infinito)
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+    });
+
+    // 4. Resposta com stop_reason indicando uso de ferramenta (tool_use)
+    it("4. Resposta com stop_reason indicando tool_use não deve tentar interpretar a chamada como texto", async () => {
+      // Tentativa 1: retorna tool_use
+      mockCreate.mockResolvedValueOnce({
+        id: "msg_tool_1",
+        model: "claude-3-5-haiku-20241022",
+        stop_reason: "tool_use",
+        content: [{ type: "tool_use", id: "toolu_123", name: "lookup_data", input: { query: "SOC" } }],
+      });
+      // Tentativa 2 (retry): ainda tool_use
+      mockCreate.mockResolvedValueOnce({
+        id: "msg_tool_2",
+        model: "claude-3-5-haiku-20241022",
+        stop_reason: "tool_use",
+        content: [{ type: "tool_use", id: "toolu_456", name: "lookup_data", input: { query: "SOC" } }],
+      });
+
+      const service = new AnthropicClientService("sk-ant-valid-key", "claude-3-5-haiku-20241022");
+      await expect(
+        service.suggestSummary({
+          jobTitle: "Analista de SOC",
+          field: "Segurança",
+        })
+      ).rejects.toThrow(AIEmptyResponseError);
+
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+    });
+
+    // 5. Erro HTTP 503 real da Anthropic
+    it("5. Erro HTTP 503 real da Anthropic deve ser tratado como serviço indisponível e reportar cabeçalhos forenses", async () => {
+      const err503 = Object.assign(new Error("503 Service Unavailable"), {
+        status: 503,
+        name: "InternalServerError",
+        upstreamStatus: 503,
+        upstreamModel: "claude-3-5-haiku-20241022",
+      });
+
+      const res = handleAIRouteError(err503);
+      expect(res.status).toBe(503);
+      expect(res.headers.get("x-ai-error-status")).toBe("503");
+      expect(res.headers.get("x-ai-model")).toBe("claude-3-5-haiku-20241022");
+
+      const body = await res.json();
+      expect(body.code).toBe("SERVICE_UNAVAILABLE");
+      expect(body.upstreamStatus).toBe(503);
+      expect(body.error).toContain("temporariamente indisponível");
+    });
+
+    // 6. Modelo inválido ou erro definitivo
+    it("6. Modelo inválido ou erro definitivo (HTTP 404/400) não deve disparar retries e deve falhar imediatamente", async () => {
+      // Normalização prévia de modelo corrige claude-haiku-5-5 para oficial
+      expect(normalizeAnthropicModel("claude-haiku-5-5")).toBe("claude-3-5-haiku-20241022");
+      expect(normalizeAnthropicModel("claude-3.5-haiku")).toBe("claude-3-5-haiku-20241022");
+      expect(normalizeAnthropicModel("claude-haiku")).toBe("claude-3-haiku-20240307");
+
+      // Erro definitivo retornado pela API (HTTP 404 - NotFoundError)
+      mockCreate.mockRejectedValueOnce(
+        Object.assign(new Error("model not found"), {
+          status: 404,
+          name: "NotFoundError",
+        })
+      );
+
+      const service = new AnthropicClientService("sk-ant-valid-key", "claude-3-5-haiku-20241022");
+      await expect(
+        service.suggestSummary({
+          jobTitle: "Desenvolvedor",
+          field: "TI",
+        })
+      ).rejects.toThrow("model not found");
+
+      // Deve falhar na primeira chamada sem retries
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+    });
+
+    // 7. Esgotamento das tentativas
+    it("7. Esgotamento das tentativas com Retry-After deve limitar chamadas e propagar erro de contingência", async () => {
+      // Primeira tentativa falha com 529 e Retry-After
+      mockCreate.mockRejectedValueOnce(
+        Object.assign(new Error("529 Overloaded"), {
+          status: 529,
+          name: "InternalServerError",
+          headers: { "retry-after": "0" },
+        })
+      );
+      // Segunda tentativa (contingência de cluster) também falha com 529
+      mockCreate.mockRejectedValueOnce(
+        Object.assign(new Error("529 Overloaded cluster B"), {
+          status: 529,
+          name: "InternalServerError",
+        })
+      );
+
+      const service = new AnthropicClientService("sk-ant-valid-key", "claude-3-5-haiku-20241022");
+      await expect(
+        service.suggestSummary({
+          jobTitle: "Analista de SOC",
+          field: "Segurança",
+        })
+      ).rejects.toThrow();
+
+      // Exatamente 2 tentativas (1 com modelo principal + 1 com cluster de contingência)
+      expect(mockCreate).toHaveBeenCalledTimes(2);
     });
   });
 });

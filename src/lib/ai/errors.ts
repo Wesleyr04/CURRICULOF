@@ -28,6 +28,13 @@ export class AIServiceUnavailableError extends Error {
   }
 }
 
+export class AIEmptyResponseError extends Error {
+  constructor(message: string = "A API da Anthropic retornou uma resposta sem conteúdo de texto utilizável.") {
+    super(message);
+    this.name = "AIEmptyResponseError";
+  }
+}
+
 export class AIContentRefusalError extends Error {
   constructor(message: string = "Não foi possível gerar uma sugestão para os termos informados. Por favor, utilize uma nomenclatura corporativa ou profissional válida.") {
     super(message);
@@ -170,6 +177,22 @@ export function handleAIRouteError(error: unknown): NextResponse {
         code: "CONTENT_REFUSAL",
       },
       { status: 422 }
+    );
+  }
+
+  // Resposta da IA vazia ou sem texto utilizável (HTTP 502 - Bad Gateway)
+  if (error instanceof AIEmptyResponseError || errorName === "AIEmptyResponseError") {
+    return NextResponse.json(
+      {
+        error: "O modelo de inteligência artificial não retornou um texto utilizável para as informações fornecidas. Tente novamente em instantes.",
+        code: "EMPTY_RESPONSE",
+      },
+      {
+        status: 502,
+        headers: {
+          "x-ai-error-name": "AIEmptyResponseError",
+        },
+      }
     );
   }
 

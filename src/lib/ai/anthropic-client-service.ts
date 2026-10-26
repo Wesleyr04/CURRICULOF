@@ -10,11 +10,107 @@ import {
   AIRateLimitError,
   AIContentRefusalError,
   AIServiceUnavailableError,
+  AIEmptyResponseError,
   sanitizeAiErrorMessage,
 } from "./errors";
 import { isAiRefusal } from "@/lib/security/content-guard";
 import { aiTelemetryService } from "./telemetry/service";
 import { AIOperationType, TokenUsage } from "./telemetry/types";
+
+export const VALID_ANTHROPIC_MODELS = new Set([
+  "claude-3-5-haiku-20241022",
+  "claude-3-5-haiku-latest",
+  "claude-3-haiku-20240307",
+  "claude-3-5-sonnet-20241022",
+  "claude-3-5-sonnet-latest",
+  "claude-3-7-sonnet-20250219",
+  "claude-3-7-sonnet-latest",
+  "claude-3-opus-20240229",
+  "claude-3-opus-latest",
+]);
+
+/**
+ * Normaliza e valida identificadores de modelo para a API oficial da Anthropic.
+ * Corrige com tolerância aliases e erros de digitação (ex: claude-haiku-5-5 -> claude-3-5-haiku-20241022).
+ */
+export function normalizeAnthropicModel(rawModel: string): string {
+  const clean = (rawModel || "").replace(/[\r\n"']/g, "").trim().toLowerCase();
+  if (!clean) return "claude-3-5-haiku-20241022";
+
+  // Modelo oficial exato
+  if (VALID_ANTHROPIC_MODELS.has(clean)) {
+    return clean;
+  }
+
+  // Mapeamentos tolerantes de erros de digitação e variantes comuns
+  if (clean.includes("haiku")) {
+    if (
+      clean.includes("3-5") ||
+      clean.includes("3.5") ||
+      clean.includes("5-5") ||
+      clean.includes("5.5") ||
+      clean.includes("3_5") ||
+      clean.includes("5_5")
+    ) {
+      return "claude-3-5-haiku-20241022";
+    }
+    return "claude-3-haiku-20240307";
+  }
+
+  if (clean.includes("sonnet")) {
+    if (clean.includes("3-7") || clean.includes("3.7")) {
+      return "claude-3-7-sonnet-20250219";
+    }
+    return "claude-3-5-sonnet-20241022";
+  }
+
+  if (clean.includes("opus")) {
+    return "claude-3-opus-20240229";
+  }
+
+  // Se for um modelo Claude com padrão válido (ex: modelos de teste enterprise como claude-custom-enterprise-test), permite
+  if (clean.startsWith("claude-") && clean.includes("-") && clean.length > 8) {
+    return clean;
+  }
+
+  // Fallback padrão seguro para modelo oficial homologado
+  return "claude-3-5-haiku-20241022";
+}
+
+/**
+ * Extrai o tempo de espera seguro em milissegundos a partir do cabeçalho Retry-After de um erro HTTP.
+ * Aplica teto de segurança de 3000ms para evitar estourar o limite de tempo de funções serverless.
+ */
+export function parseRetryAfterMs(error: unknown): number | null {
+  if (!error || typeof error !== "object") return null;
+  const errObj = error as { headers?: Headers | Record<string, string | string[] | undefined> };
+  const headers = errObj?.headers;
+  if (!headers) return null;
+
+  let rawValue: string | null = null;
+  if (typeof (headers as Headers).get === "function") {
+    rawValue = (headers as Headers).get("retry-after");
+  } else if (typeof headers === "object") {
+    const val = (headers as Record<string, string | string[] | undefined>)["retry-after"];
+    if (typeof val === "string") rawValue = val;
+    else if (Array.isArray(val) && typeof val[0] === "string") rawValue = val[0];
+  }
+
+  if (!rawValue) return null;
+
+  const seconds = parseInt(rawValue, 10);
+  if (!isNaN(seconds) && seconds >= 0) {
+    return Math.min(seconds * 1000, 3000);
+  }
+
+  const parsedDate = Date.parse(rawValue);
+  if (!isNaN(parsedDate)) {
+    const diff = parsedDate - Date.now();
+    return Math.max(0, Math.min(diff, 3000));
+  }
+
+  return null;
+}
 
 export interface AIAuthDiagnostics {
   providerMode: "Anthropic Claude (Oficial)" | "OpenRouter (Claude Compatibility)";
@@ -161,11 +257,13 @@ export class AnthropicClientService implements IAIService {
 
     // Validação estrita do modelo Anthropic Oficial (impede modelos fictícios ou de outros provedores)
     let effectiveModel = cleanModel;
-    if (!this.isOpenRouter && !cleanModel.toLowerCase().startsWith("claude-")) {
-      console.warn(
-        `[AnthropicClientService] Modelo '${cleanModel}' não é um modelo Claude oficial reconhecido. Recorrendo com segurança ao modelo oficial 'claude-3-5-haiku-20241022'.`
-      );
-      effectiveModel = "claude-3-5-haiku-20241022";
+    if (!this.isOpenRouter) {
+      effectiveModel = normalizeAnthropicModel(cleanModel);
+      if (effectiveModel !== cleanModel) {
+        console.warn(
+          `[AnthropicClientService] Modelo '${cleanModel}' normalizado para o modelo oficial homologado '${effectiveModel}'.`
+        );
+      }
     }
 
     this.model = effectiveModel;
@@ -354,7 +452,7 @@ export class AnthropicClientService implements IAIService {
 
   private async callAnthropic(
     promptText: string,
-    maxTokens: number = 600,
+    maxTokens: number = 800,
     operationType: AIOperationType = "unknown",
     correlationId?: string
   ): Promise<string> {
@@ -369,41 +467,120 @@ export class AnthropicClientService implements IAIService {
     const startTime = Date.now();
     const effectiveCorrelationId = correlationId || crypto.randomUUID();
 
-    try {
-      let response: any;
+    // Helper interno para executar a chamada com respeito a Retry-After e contingência de cluster
+    const executeCallWithContingency = async (targetModel: string): Promise<any> => {
       try {
-        response = await this.client.messages.create({
-          model: this.model,
+        return await this.client!.messages.create({
+          model: targetModel,
           max_tokens: maxTokens,
           system: AI_SYSTEM_INSTRUCTIONS,
           messages: [{ role: "user", content: promptText }],
         });
       } catch (firstErr: unknown) {
-        const errObj = firstErr as { status?: number; error?: { message?: string } };
+        const errObj = firstErr as {
+          status?: number;
+          error?: { message?: string };
+          headers?: Headers | Record<string, string | string[] | undefined>;
+        };
         const status = errObj?.status || 0;
-        const isOverloadedOrUnavailable = status === 529 || status === 503 || status === 500;
+        const isTransient =
+          status === 529 ||
+          status === 503 ||
+          status === 500 ||
+          (typeof (firstErr as Error)?.message === "string" &&
+            ((firstErr as Error).message.includes("529") ||
+              (firstErr as Error).message.includes("Overloaded") ||
+              (firstErr as Error).message.includes("overloaded_error")));
 
-        if (isOverloadedOrUnavailable) {
-          console.warn(
-            `[AnthropicClientService] Provedor retornou HTTP ${status} (Overloaded/Temporarily Unavailable). Executando contingência com cluster estável...`
-          );
-
-          // Se o modelo sobrecarregado for claude-3-5-haiku, recorre imediatamente a claude-3-haiku-20240307
-          const fallbackModel = this.model.includes("3-5-haiku")
-            ? "claude-3-haiku-20240307"
-            : this.model === "claude-3-haiku-20240307"
-            ? "claude-3-5-haiku-20241022"
-            : "claude-3-haiku-20240307";
-
-          response = await this.client.messages.create({
-            model: fallbackModel,
-            max_tokens: maxTokens,
-            system: AI_SYSTEM_INSTRUCTIONS,
-            messages: [{ role: "user", content: promptText }],
-          });
-        } else {
+        // Se for erro definitivo (400, 401, 403, 404, 422), não retenta e lança imediatamente
+        if (!isTransient) {
           throw firstErr;
         }
+
+        console.warn(
+          `[AnthropicClientService] Provedor retornou status ${status} (Transient/Overloaded). Aplicando contingência de cluster...`
+        );
+
+        // Respeita Retry-After quando presente
+        const retryAfterMs = parseRetryAfterMs(firstErr);
+        if (retryAfterMs !== null && retryAfterMs > 0) {
+          console.log(`[AnthropicClientService] Respeitando Retry-After de ${retryAfterMs}ms.`);
+          await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
+        }
+
+        // Alterna para cluster de alta capacidade se o modelo padrão estiver sobrecarregado
+        const fallbackModel = targetModel.includes("3-5-haiku")
+          ? "claude-3-haiku-20240307"
+          : targetModel === "claude-3-haiku-20240307"
+          ? "claude-3-5-haiku-20241022"
+          : "claude-3-haiku-20240307";
+
+        return await this.client!.messages.create({
+          model: fallbackModel,
+          max_tokens: maxTokens,
+          system: AI_SYSTEM_INSTRUCTIONS,
+          messages: [{ role: "user", content: promptText }],
+        });
+      }
+    };
+
+    // Helper de extração e concatenação de todos os blocos de texto
+    const extractContentText = (
+      res: any
+    ): { fullText: string; hasToolUse: boolean; hasThinkingOnly: boolean } => {
+      if (!res) return { fullText: "", hasToolUse: false, hasThinkingOnly: false };
+
+      if (res.stop_reason === "refusal") {
+        throw new AIContentRefusalError(
+          "Não foi possível gerar uma sugestão para os termos informados. Por favor, utilize uma nomenclatura corporativa ou profissional válida."
+        );
+      }
+
+      const contentBlocks = Array.isArray(res.content) ? res.content : [];
+      const hasToolUse = res.stop_reason === "tool_use" || contentBlocks.some((b: any) => b?.type === "tool_use");
+
+      // Percorre e concatena todos os blocos de texto válidos
+      const textBlocks = contentBlocks.filter(
+        (b: any): b is { type: "text"; text: string } => b?.type === "text" && typeof b?.text === "string"
+      );
+      const fullText = textBlocks.map((b: any) => b.text).join("").trim();
+
+      const hasThinkingOnly = !fullText && contentBlocks.some((b: any) => b?.type === "thinking");
+
+      return { fullText, hasToolUse, hasThinkingOnly };
+    };
+
+    try {
+      let response = await executeCallWithContingency(this.model);
+      let { fullText, hasToolUse, hasThinkingOnly } = extractContentText(response);
+
+      // Se a resposta for válida na API, mas não contiver texto utilizável (ex: apenas thinking, tool_use ou vazio)
+      if (!fullText) {
+        console.warn(
+          `[AnthropicClientService] Resposta sem texto utilizável (stop_reason=${response?.stop_reason || "unknown"}, tool_use=${hasToolUse}, thinking=${hasThinkingOnly}). Executando no máximo 1 nova tentativa controlada...`
+        );
+
+        // Faz no máximo uma nova tentativa controlada (sem loop infinito)
+        response = await executeCallWithContingency(this.model);
+        const retryExtracted = extractContentText(response);
+        fullText = retryExtracted.fullText;
+        hasToolUse = retryExtracted.hasToolUse;
+        hasThinkingOnly = retryExtracted.hasThinkingOnly;
+
+        if (!fullText) {
+          console.error(
+            `[AnthropicClientService] Esgotada tentativa controlada: modelo não produziu texto utilizável (stop_reason=${response?.stop_reason || "unknown"}, tool_use=${hasToolUse}, thinking=${hasThinkingOnly}).`
+          );
+          throw new AIEmptyResponseError(
+            "A API da Anthropic retornou uma resposta sem conteúdo de texto utilizável."
+          );
+        }
+      }
+
+      if (isAiRefusal(fullText)) {
+        throw new AIContentRefusalError(
+          "Não foi possível gerar uma sugestão para os termos informados. Por favor, utilize uma nomenclatura corporativa ou profissional válida."
+        );
       }
 
       const durationMs = Date.now() - startTime;
@@ -464,129 +641,107 @@ export class AnthropicClientService implements IAIService {
         status: "success",
       });
 
-      if (response.stop_reason === "refusal") {
-        throw new AIContentRefusalError(
-          "Não foi possível gerar uma sugestão para os termos informados. Por favor, utilize uma nomenclatura corporativa ou profissional válida."
-        );
-      }
-
-      // Busca o bloco de texto real, suportando modelos que retornam blocos de thinking antes do texto
-      const textBlock = response.content?.find(
-        (block: { type: string; text?: string }) => block.type === "text"
-      ) as { type: "text"; text: string } | undefined;
-      if (textBlock && textBlock.type === "text") {
-        const text = textBlock.text.trim();
-        if (text) {
-          if (isAiRefusal(text)) {
-            throw new AIContentRefusalError(
-              "Não foi possível gerar uma sugestão para os termos informados. Por favor, utilize uma nomenclatura corporativa ou profissional válida."
-            );
-          }
-          return text;
-        }
-      }
-
-      throw new Error("A API da Anthropic retornou uma resposta sem conteúdo de texto.");
+      return fullText;
     } catch (error: unknown) {
-      // Se for um erro já tratado de recusa de conteúdo, não registra como falha de API
-      if (!(error instanceof AIContentRefusalError)) {
-        const durationMs = Date.now() - startTime;
-        const errObj = error as { name?: string; status?: number; message?: string; error?: { type?: string; message?: string } };
-        // [DIAG-TEMP] Log bruto pré-sanitização para diagnóstico do HTTP 400 (sem expor chave)
-        console.error("[ANTHROPIC_RAW_ERROR_DIAG]", {
-          name: errObj?.name,
-          status: errObj?.status,
-          message: typeof errObj?.message === "string" ? errObj.message.slice(0, 400) : String(error).slice(0, 400),
-          errorType: errObj?.error?.type,
-          errorDetail: typeof errObj?.error?.message === "string" ? errObj.error.message.slice(0, 300) : undefined,
-          model: this.model,
-          isOpenRouter: this.isOpenRouter,
-        });
-        const errorCode = errObj?.name || (errObj?.status ? `HTTP_${errObj.status}` : "API_ERROR");
-        const safeErrorMsg = sanitizeAiErrorMessage(error);
-
-        await aiTelemetryService.recordUsage({
-          model: this.model,
-          requestedModel: this.model,
-          actualModel: undefined,
-          operationType,
-          source: "error",
-          usage: {
-            inputTokens: null,
-            outputTokens: null,
-            cacheCreationInputTokens: null,
-            cacheReadInputTokens: null,
-            tokensStatus: "unavailable",
-          },
-          correlationId: effectiveCorrelationId,
-          responseId: null,
-          durationMs,
-          status: "error",
-          errorCode,
-          errorMessageSafe: safeErrorMsg,
-        });
-
-        // Diferenciação e propagação fiel de erros da API para evitar mascaramento como 503
-        const rawErrMsg = typeof errObj?.message === "string" ? errObj.message : "";
-        const effectiveErrMsg = rawErrMsg || safeErrorMsg;
-
-        if (
-          errObj?.status === 401 ||
-          errObj?.name === "AuthenticationError" ||
-          (rawErrMsg && (rawErrMsg.includes("authentication_error") || rawErrMsg.includes("invalid x-api-key")))
-        ) {
-          const authErr = new AIAuthenticationError(
-            effectiveErrMsg || "Falha de autenticação com o provedor de IA. Credenciais inválidas ou revogadas."
-          );
-          Object.assign(authErr, {
-            status: 401,
-            name: "AuthenticationError",
-            authDiagnostics: this.getAuthDiagnostics(),
-          });
-          throw authErr;
-        }
-
-        if (errObj?.status === 429 || errObj?.name === "RateLimitError") {
-          const rateErr = new AIRateLimitError(effectiveErrMsg || "Limite de requisições excedido no provedor de IA.");
-          Object.assign(rateErr, { status: 429, name: "RateLimitError" });
-          throw rateErr;
-        }
-
-        if (errObj?.status === 403 || errObj?.name === "PermissionDeniedError") {
-          const permErr = new Error(effectiveErrMsg || "Acesso não autorizado ao modelo de inteligência artificial.");
-          Object.assign(permErr, { status: 403, name: "PermissionDeniedError" });
-          throw permErr;
-        }
-
-        if (
-          errObj?.status === 400 ||
-          errObj?.status === 404 ||
-          errObj?.name === "BadRequestError" ||
-          errObj?.name === "NotFoundError"
-        ) {
-          const reqErr = new Error(effectiveErrMsg || "Requisição inválida enviada ao provedor de IA.");
-          Object.assign(reqErr, { status: errObj?.status || 400, name: errObj?.name || "BadRequestError" });
-          throw reqErr;
-        }
-
-        const unavailableErr = new AIServiceUnavailableError(safeErrorMsg);
-        Object.assign(unavailableErr, {
-          status: errObj?.status || 503,
-          name: errObj?.name || "AIServiceUnavailableError",
-          upstreamModel: this.model,
-          upstreamStatus: errObj?.status || 503,
-          upstreamMessage: safeErrorMsg,
-        });
-        throw unavailableErr;
+      // Se for recusa ou resposta sem texto utilizável, propaga diretamente sem converter em 503
+      if (error instanceof AIContentRefusalError || error instanceof AIEmptyResponseError) {
+        throw error;
       }
 
-      throw error;
+      const durationMs = Date.now() - startTime;
+      const errObj = error as { name?: string; status?: number; message?: string; error?: { type?: string; message?: string } };
+      // Log bruto pré-sanitização para diagnóstico (Zero-PII de secrets e dados pessoais)
+      console.error("[ANTHROPIC_RAW_ERROR_DIAG]", {
+        name: errObj?.name,
+        status: errObj?.status,
+        message: typeof errObj?.message === "string" ? errObj.message.slice(0, 400) : String(error).slice(0, 400),
+        errorType: errObj?.error?.type,
+        errorDetail: typeof errObj?.error?.message === "string" ? errObj.error.message.slice(0, 300) : undefined,
+        model: this.model,
+        isOpenRouter: this.isOpenRouter,
+      });
+      const errorCode = errObj?.name || (errObj?.status ? `HTTP_${errObj.status}` : "API_ERROR");
+      const safeErrorMsg = sanitizeAiErrorMessage(error);
+
+      await aiTelemetryService.recordUsage({
+        model: this.model,
+        requestedModel: this.model,
+        actualModel: undefined,
+        operationType,
+        source: "error",
+        usage: {
+          inputTokens: null,
+          outputTokens: null,
+          cacheCreationInputTokens: null,
+          cacheReadInputTokens: null,
+          tokensStatus: "unavailable",
+        },
+        correlationId: effectiveCorrelationId,
+        responseId: null,
+        durationMs,
+        status: "error",
+        errorCode,
+        errorMessageSafe: safeErrorMsg,
+      });
+
+      // Diferenciação e propagação fiel de erros da API para evitar mascaramento como 503
+      const rawErrMsg = typeof errObj?.message === "string" ? errObj.message : "";
+      const effectiveErrMsg = rawErrMsg || safeErrorMsg;
+
+      if (
+        errObj?.status === 401 ||
+        errObj?.name === "AuthenticationError" ||
+        (rawErrMsg && (rawErrMsg.includes("authentication_error") || rawErrMsg.includes("invalid x-api-key")))
+      ) {
+        const authErr = new AIAuthenticationError(
+          effectiveErrMsg || "Falha de autenticação com o provedor de IA. Credenciais inválidas ou revogadas."
+        );
+        Object.assign(authErr, {
+          status: 401,
+          name: "AuthenticationError",
+          authDiagnostics: this.getAuthDiagnostics(),
+        });
+        throw authErr;
+      }
+
+      if (errObj?.status === 429 || errObj?.name === "RateLimitError") {
+        const rateErr = new AIRateLimitError(effectiveErrMsg || "Limite de requisições excedido no provedor de IA.");
+        Object.assign(rateErr, { status: 429, name: "RateLimitError" });
+        throw rateErr;
+      }
+
+      if (errObj?.status === 403 || errObj?.name === "PermissionDeniedError") {
+        const permErr = new Error(effectiveErrMsg || "Acesso não autorizado ao modelo de inteligência artificial.");
+        Object.assign(permErr, { status: 403, name: "PermissionDeniedError" });
+        throw permErr;
+      }
+
+      if (
+        errObj?.status === 400 ||
+        errObj?.status === 404 ||
+        errObj?.name === "BadRequestError" ||
+        errObj?.name === "NotFoundError"
+      ) {
+        const reqErr = new Error(effectiveErrMsg || "Requisição inválida enviada ao provedor de IA.");
+        Object.assign(reqErr, { status: errObj?.status || 400, name: errObj?.name || "BadRequestError" });
+        throw reqErr;
+      }
+
+      const unavailableErr = new AIServiceUnavailableError(safeErrorMsg);
+      Object.assign(unavailableErr, {
+        status: errObj?.status || 503,
+        name: errObj?.name || "AIServiceUnavailableError",
+        upstreamModel: this.model,
+        upstreamStatus: errObj?.status || 503,
+        upstreamMessage: safeErrorMsg,
+      });
+      throw unavailableErr;
     }
   }
 
   async suggestSummary(params: AISuggestSummaryParams): Promise<string> {
     const prompt = buildSuggestSummaryPrompt(params);
-    return await this.callAnthropic(prompt, 500, "suggest-summary", params.correlationId);
+    return await this.callAnthropic(prompt, 800, "suggest-summary", params.correlationId);
   }
 
   async improveText(params: AIImproveTextParams): Promise<string> {
@@ -594,7 +749,7 @@ export class AnthropicClientService implements IAIService {
     if (!raw) return "";
 
     const prompt = buildImproveTextPrompt(params);
-    return await this.callAnthropic(prompt, 500, "improve-text", params.correlationId);
+    return await this.callAnthropic(prompt, 800, "improve-text", params.correlationId);
   }
 
   async improveFullResume(
