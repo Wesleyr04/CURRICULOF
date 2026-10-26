@@ -36,6 +36,7 @@ export interface TargetInfo {
   careerStage?: CareerStage;
   careerContext?: string;
   summary: string;
+  summaryTouched?: boolean;
 }
 
 export interface ExperienceItem {

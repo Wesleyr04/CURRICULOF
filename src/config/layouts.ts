@@ -237,6 +237,7 @@ export const EMPTY_RESUME_DATA: ResumeData = {
     jobTitle: "",
     field: "",
     summary: "",
+    summaryTouched: false,
   },
   experiences: [],
   education: [],

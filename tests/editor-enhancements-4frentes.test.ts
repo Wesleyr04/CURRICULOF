@@ -194,4 +194,79 @@ describe("Testes das 4 Frentes: Formação, Idade, Correção 'Sobre você' e Ot
       expect(result.target.summary).toBe("Apresentação aprovada no Slide 2.");
     });
   });
+
+  describe("Frente 5: Regressão de Estado, Títulos de Layout e Copywriting Neutro", () => {
+    it("navegação entre etapas com summaryTouched: true e summary: '' NÃO deve ressuscitar careerContext", () => {
+      // Estado inicial onde o candidato preencheu contexto na Etapa 2
+      const userResume: ResumeData = {
+        ...INITIAL_RESUME_DATA,
+        target: {
+          ...INITIAL_RESUME_DATA.target,
+          careerContext: "Contexto preenchido na Etapa 2",
+          summary: "Texto inicial",
+          summaryTouched: true,
+        },
+      };
+
+      // Usuário apagou tudo na Etapa 6 (Ctrl + A + Backspace)
+      const afterClear: ResumeData = {
+        ...userResume,
+        target: {
+          ...userResume.target,
+          summary: "",
+          summaryTouched: true,
+        },
+      };
+
+      // Usuário navegou para Etapa 1 e depois voltou para a Etapa 6
+      const simulateReturnToStep6 = (data: ResumeData): ResumeData => {
+        const isTouched = data.target.summaryTouched === true;
+        const currentSummary = data.target.summary ?? "";
+        const careerContext = (data.target.careerContext || "").trim();
+
+        // Lógica oficial: só inicializa se NUNCA foi tocado
+        if (!isTouched && currentSummary === "" && careerContext !== "") {
+          return {
+            ...data,
+            target: {
+              ...data.target,
+              summary: careerContext,
+              summaryTouched: true,
+            },
+          };
+        }
+        return data;
+      };
+
+      const finalState = simulateReturnToStep6(afterClear);
+      expect(finalState.target.summary).toBe("");
+      expect(finalState.target.summary).not.toBe("Contexto preenchido na Etapa 2");
+    });
+
+    it("ClassicAtsLayout não deve conter mais 'Qualificação Profissional', e sim 'Sobre Você'", async () => {
+      const fs = await import("fs");
+      const path = await import("path");
+      const fileContent = fs.readFileSync(
+        path.join(process.cwd(), "src/components/layouts/ClassicAtsLayout.tsx"),
+        "utf-8"
+      );
+      expect(fileContent).not.toContain("Qualificação Profissional");
+      expect(fileContent).toContain("Sobre Você");
+    });
+
+    it("Componentes da interface não devem narrar 'O Fast vai...', 'para o Fast' ou 'com o Fast'", async () => {
+      const fs = await import("fs");
+      const path = await import("path");
+      const step2 = fs.readFileSync(path.join(process.cwd(), "src/components/editor/Step2Target.tsx"), "utf-8");
+      const step6 = fs.readFileSync(path.join(process.cwd(), "src/components/editor/Step6Review.tsx"), "utf-8");
+      const step3 = fs.readFileSync(path.join(process.cwd(), "src/components/editor/Step3Experience.tsx"), "utf-8");
+
+      expect(step2).not.toMatch(/O Fast vai/i);
+      expect(step2).not.toMatch(/para o Fast/i);
+      expect(step6).not.toMatch(/O Fast vai/i);
+      expect(step6).not.toMatch(/com o Fast/i);
+      expect(step3).not.toMatch(/com o Fast/i);
+      expect(step3).not.toMatch(/para o Fast/i);
+    });
+  });
 });

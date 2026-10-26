@@ -113,12 +113,12 @@ export function MinimalistLayout({ data, isPdfView = false }: LayoutProps) {
       <div className={`grid grid-cols-12 gap-6 pt-5 ${metrics.spacingClass}`}>
         {/* Coluna Esquerda (~38% da largura - 5 cols) */}
         <div className={`col-span-5 ${metrics.density === "compact" ? "space-y-4" : "space-y-5"}`}>
-          {/* SOBRE MIM */}
+          {/* SOBRE VOCÊ */}
           {showSummary && (
             <section className="space-y-1.5">
               <div className="border-t-2 pt-1" style={{ borderColor: primaryColor }}>
                 <h2 className="text-xs font-bold uppercase tracking-wider" style={{ color: primaryColor }}>
-                  SOBRE MIM
+                  SOBRE VOCÊ
                 </h2>
               </div>
               <p className="text-xs text-slate-700 leading-relaxed text-justify">

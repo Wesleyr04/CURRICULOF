@@ -87,7 +87,7 @@ export function Step3Experience({
         ...prev,
         [exp.id]: {
           type: "error",
-          message: "Escreva ao menos algumas palavras sobre suas atividades para o Fast aprimorar.",
+          message: "Escreva ao menos algumas palavras sobre suas atividades para aprimoramento profissional.",
         },
       }));
       return;
@@ -315,12 +315,12 @@ export function Step3Experience({
                       {loadingAiId === exp.id ? (
                         <>
                           <Loader2 className="w-3 h-3 animate-spin text-blue-700" />
-                          <span>Aprimorando com o Fast...</span>
+                          <span>Aprimorando descrição...</span>
                         </>
                       ) : (
                         <>
                           <Sparkles className="w-3 h-3 text-blue-700" />
-                          <span>Aprimore com o Fast</span>
+                          <span>Aprimorar descrição</span>
                         </>
                       )}
                     </button>

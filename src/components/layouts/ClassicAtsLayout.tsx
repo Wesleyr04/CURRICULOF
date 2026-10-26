@@ -148,14 +148,14 @@ export function ClassicAtsLayout({ data, isPdfView = false }: LayoutProps) {
           </section>
         )}
 
-        {/* 2. Qualificação Profissional */}
+        {/* 2. Sobre Você */}
         {showSummary && (
           <section>
             <h2
               className="text-xs sm:text-sm font-extrabold uppercase tracking-wider pb-1 border-b-2"
               style={{ color: primaryColor, borderColor: primaryColor }}
             >
-              Qualificação Profissional
+              Sobre Você
             </h2>
             <p className="mt-1.5 text-xs text-slate-700 leading-relaxed text-justify">
               {displaySummary}

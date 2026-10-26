@@ -120,6 +120,28 @@ export function Step6Review({
   const summaryAbortControllerRef = useRef<AbortController | null>(null);
   const summaryVersionRef = useRef<number>(0);
 
+  // Inicialização controlada: se o campo nunca foi tocado e o contexto da Etapa 2 existir, inicializa no mount
+  const hasInitializedMountRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (hasInitializedMountRef.current) return;
+    hasInitializedMountRef.current = true;
+
+    const currentSummary = resumeData.target?.summary ?? "";
+    const careerContext = (resumeData.target?.careerContext || "").trim();
+    const isTouched = resumeData.target?.summaryTouched === true;
+
+    if (!isTouched && currentSummary === "" && careerContext !== "") {
+      onApplyAiImprovement({
+        ...resumeData,
+        target: {
+          ...resumeData.target,
+          summary: careerContext,
+          summaryTouched: true,
+        },
+      });
+    }
+  }, []);
+
   // Cancela requisições assíncronas ativas caso o componente seja desmontado
   useEffect(() => {
     return () => {
@@ -172,7 +194,7 @@ export function Step6Review({
     if (!previousResumeData) return;
     onApplyAiImprovement(previousResumeData);
     setPreviousResumeData(null);
-    setAiSuccessMessage("Currículo restaurado para a versão anterior ao aprimoramento do Fast.");
+    setAiSuccessMessage("Currículo restaurado para a versão anterior à revisão.");
     setTimeout(() => setAiSuccessMessage(null), 5000);
   };
 
@@ -288,7 +310,7 @@ export function Step6Review({
           errorData?.error ||
           (res.status === 401
             ? "Falha de autenticação no servidor. Verifique as credenciais."
-            : "Falha ao comunicar com o serviço Fast.");
+            : "Falha ao comunicar com o serviço de revisão.");
         throw new Error(detailedMsg);
       }
 
@@ -313,10 +335,11 @@ export function Step6Review({
         target: {
           ...resumeData.target,
           summary: generatedSummary,
+          summaryTouched: true,
         },
       });
 
-      setAiSuccessMessage("Apresentação 'Sobre você' gerada com sucesso pelo Fast, combinando seu histórico completo!");
+      setAiSuccessMessage("Apresentação profissional gerada com sucesso, combinando seu histórico completo!");
       setTimeout(() => setAiSuccessMessage(null), 8000);
     } catch (err: unknown) {
       // Ignora erros causados por abort intencional
@@ -339,8 +362,8 @@ export function Step6Review({
 
     const backup = JSON.parse(JSON.stringify(resumeData)) as ResumeData;
     const currentSummaryText = (resumeData.target.summary || "").trim();
-    // Otimização: se o usuário já possui um texto no Sobre você (> 10 caracteres), preserva e economiza 100% dos tokens de resumo
-    const hasValidSummary = currentSummaryText.length > 10;
+    const isTouched = resumeData.target.summaryTouched === true;
+    const hasValidSummary = currentSummaryText.length > 0;
 
     try {
       // Limpa dados vazios para evitar rejeições acidentais no backend
@@ -348,11 +371,9 @@ export function Step6Review({
         ...resumeData,
         target: {
           ...resumeData.target,
-          summary:
-            currentSummaryText ||
-            (resumeData.target.careerContext || "").trim(),
+          summary: currentSummaryText,
         },
-        preserveSummary: hasValidSummary,
+        preserveSummary: hasValidSummary || isTouched,
         experiences: (resumeData.experiences || []).filter(
           (e) => (e.role && e.role.trim()) || (e.company && e.company.trim()) || (e.description && e.description.trim())
         ),
@@ -369,7 +390,7 @@ export function Step6Review({
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
-        throw new Error(errorData?.error || "Erro na comunicação com o assistente do Fast.");
+        throw new Error(errorData?.error || "Erro na comunicação com o serviço de revisão.");
       }
 
       const result = await res.json();
@@ -378,13 +399,14 @@ export function Step6Review({
           ...result.resume,
           target: {
             ...result.resume.target,
-            // Se o usuário já possuía o "Sobre você" aprovado/preenchido, preserva intacto
-            summary: hasValidSummary ? currentSummaryText : result.resume.target.summary,
+            // Se o usuário já tocou no "Sobre você" ou tem texto preenchido, preserva intacto sem ressuscitar rascunhos antigos
+            summary: (hasValidSummary || isTouched) ? currentSummaryText : (result.resume.target?.summary || ""),
+            summaryTouched: isTouched || hasValidSummary,
           },
         };
         setPreviousResumeData(backup);
         onApplyAiImprovement(mergedResume);
-        setAiSuccessMessage("Redação e perfil profissional aprimorados com sucesso pelo Fast, com termos corporativos e normalização!");
+        setAiSuccessMessage("Redação e perfil profissional aprimorados com sucesso, com termos corporativos e normalização!");
         setTimeout(() => setAiSuccessMessage(null), 8000);
       }
     } catch (err: unknown) {
@@ -411,7 +433,7 @@ export function Step6Review({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="w-full max-w-full min-w-0 space-y-4 overflow-x-hidden">
       {/* 1. Cabeçalho Compacto & Navegação Lateralizada por Abas */}
       <div className="pb-2 border-b border-slate-200">
         <div className="flex items-center justify-between gap-2">
@@ -420,7 +442,7 @@ export function Step6Review({
               Etapa 6 — Revisão & Finalização
             </h2>
             <p className="text-[11px] text-slate-500">
-              Deslize para o lado para ajustar o modelo, a seção Sobre você e aplicar o polimento final do Fast antes de baixar.
+              Navegue pelas abas para ajustar o modelo, a seção Sobre você e aplicar a revisão profissional antes de baixar.
             </p>
           </div>
 
@@ -499,7 +521,7 @@ export function Step6Review({
       {/* 2. Carrossel Horizontal / Swipe de Seções (Navegação Exclusiva por Gesto, Abas e Setas) */}
       <div
         ref={carouselRef}
-        className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2 pt-1 no-scrollbar"
+        className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2 pt-1 no-scrollbar w-full max-w-full min-w-0"
         onScroll={(e) => {
           const el = e.currentTarget;
           const index = Math.round(el.scrollLeft / el.clientWidth);
@@ -511,7 +533,7 @@ export function Step6Review({
         {/* =========================================================================
            SLIDE 1: OVERVIEW & ESTILO (COM PREVIEW A4 REAL NO MOBILE)
            ========================================================================= */}
-        <div className="min-w-full snap-start bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4">
+        <div className="w-full min-w-full max-w-full snap-start bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4 overflow-hidden">
           <div>
             <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <div className="flex items-center gap-2">
@@ -637,7 +659,7 @@ export function Step6Review({
         {/* =========================================================================
            SLIDE 2: SOBRE VOCÊ
            ========================================================================= */}
-        <div className="min-w-full snap-start bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4">
+        <div className="w-full min-w-full max-w-full snap-start bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4 overflow-hidden">
           <div>
             <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <div className="flex items-center gap-2">
@@ -650,15 +672,25 @@ export function Step6Review({
             </div>
 
             <div className="mt-3 space-y-3">
-              {/* Vínculo contextual automático com a Etapa 2 */}
+              {/* Vínculo contextual com a Etapa 2 */}
               {resumeData.target.careerContext?.trim() && (
                 <div className="flex items-start gap-2 p-2.5 bg-blue-50/80 border border-blue-200/80 rounded-xl text-[11px] text-blue-900 leading-snug">
                   <Lightbulb className="w-3.5 h-3.5 text-blue-700 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold">Contexto da Etapa 2 vinculado com sucesso:</span>{" "}
+                    <span className="font-bold">
+                      {(resumeData.target.summary || "").trim() === ""
+                        ? "Contexto informado na Etapa 2:"
+                        : (resumeData.target.summary || "").trim() === resumeData.target.careerContext.trim()
+                        ? "Contexto da Etapa 2 vinculado:"
+                        : "Contexto de referência (Etapa 2):"}
+                    </span>{" "}
                     <span className="text-slate-700">&quot;{resumeData.target.careerContext}&quot;</span>
                     <span className="block text-[10px] text-blue-800/80 mt-0.5">
-                      Esse texto já foi aproveitado no campo abaixo. Clique no botão ao lado para lapidá-lo profissionalmente com o Fast.
+                      {(resumeData.target.summary || "").trim() === ""
+                        ? "O campo abaixo está limpo. Você pode digitar diretamente ou clicar no botão acima para gerar uma sugestão baseada neste contexto."
+                        : (resumeData.target.summary || "").trim() === resumeData.target.careerContext.trim()
+                        ? "Este texto inicial está preenchido abaixo. Você pode editá-lo livremente ou aprimorá-lo com o botão acima."
+                        : "Sua apresentação reflete suas edições manuais. O contexto acima segue como referência caso queira gerar uma nova sugestão."}
                     </span>
                   </div>
                 </div>
@@ -666,10 +698,10 @@ export function Step6Review({
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <p className="text-xs text-slate-600 leading-relaxed max-w-md">
-                  O Fast vai articular seu objetivo, contexto, formação e experiências para redigir uma apresentação profissional de alto impacto.
+                  Articulação do seu objetivo, contexto, formação e experiências para redigir uma apresentação profissional de alto impacto.
                 </p>
 
-                {/* Botão de Ação do Fast */}
+                {/* Botão de Sugestão / Aprimoramento */}
                 <button
                   type="button"
                   disabled={loadingSummaryAi}
@@ -679,22 +711,22 @@ export function Step6Review({
                   {loadingSummaryAi ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                      <span>Fast estruturando apresentação...</span>
+                      <span>Estruturando apresentação...</span>
                     </>
                   ) : (resumeData.target.summary || "").trim().length > 0 ? (
                     <>
                       <Sparkles className="w-3.5 h-3.5 text-blue-200" />
-                      <span>✨ Reescrever com o Fast</span>
+                      <span>✨ Aprimorar apresentação</span>
                     </>
                   ) : resumeData.target.careerContext?.trim() ? (
                     <>
                       <Sparkles className="w-3.5 h-3.5 text-blue-200" />
-                      <span>✨ Gerar a partir do Contexto</span>
+                      <span>✨ Gerar a partir do contexto</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-3.5 h-3.5 text-blue-200" />
-                      <span>✨ Gerar texto com o Fast</span>
+                      <span>✨ Gerar sugestão de apresentação</span>
                     </>
                   )}
                 </button>
@@ -718,10 +750,11 @@ export function Step6Review({
                       target: {
                         ...resumeData.target,
                         summary: e.target.value,
+                        summaryTouched: true,
                       },
                     });
                   }}
-                  placeholder="Escreva brevemente sobre você ou clique em 'Gerar com o Fast' para estruturar sua apresentação alinhada ao seu momento de carreira..."
+                  placeholder="Escreva brevemente sobre você ou utilize o botão acima para estruturar sua apresentação profissional alinhada ao seu momento de carreira..."
                   className="w-full p-3 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-800 text-slate-900 leading-relaxed shadow-2xs"
                 />
                 <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500">
@@ -744,7 +777,7 @@ export function Step6Review({
                   onClick={() => scrollToSlide(2)}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-blue-900 hover:text-blue-950 hover:underline cursor-pointer"
                 >
-                  <span>Avançar para Revisão Geral do Fast &rarr;</span>
+                  <span>Avançar para Revisão Geral &rarr;</span>
                 </button>
               </div>
             </div>
@@ -752,9 +785,9 @@ export function Step6Review({
         </div>
 
         {/* =========================================================================
-           SLIDE 3: OTIMIZAÇÃO GERAL COM O FAST (NORMALIZAÇÃO ATS)
+           SLIDE 3: OTIMIZAÇÃO GERAL (NORMALIZAÇÃO ATS)
            ========================================================================= */}
-        <div className="min-w-full snap-start bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4">
+        <div className="w-full min-w-full max-w-full snap-start bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4 overflow-hidden">
           <div>
             <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
               <Wand2 className="w-4 h-4 text-blue-900" />
@@ -764,13 +797,13 @@ export function Step6Review({
             <div className="mt-3 p-4 bg-gradient-to-r from-blue-900 to-indigo-950 text-white rounded-xl shadow-xs space-y-2.5">
               <div className="flex items-center gap-1.5 text-blue-300 text-[11px] font-bold uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>ESPECIALISTA FAST — NORMALIZAÇÃO ATS</span>
+                <span>REVISÃO PROFISSIONAL — NORMALIZAÇÃO ATS</span>
               </div>
               <h4 className="font-extrabold text-sm sm:text-base">
                 Revisar e Profissionalizar Toda a Redação
               </h4>
               <p className="text-[11px] text-blue-100 leading-relaxed">
-                O Fast vai aprimorar todo o currículo: preserva sua apresentação da seção &quot;Sobre você&quot;, padroniza o cargo pretendido e converte experiências em tópicos de ação de alto impacto para triagem ATS. Funciona tanto para profissionais com histórico quanto para Primeiro Emprego e Estágio.
+                A revisão profissional padroniza o cargo pretendido, converte experiências em tópicos de ação com métricas e preserva a apresentação definida na seção &quot;Sobre você&quot;. Otimizado para triagem ATS em processos seletivos.
               </p>
 
               <div className="pt-1">
@@ -783,12 +816,12 @@ export function Step6Review({
                   {loadingAi ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-900" />
-                      <span>Aprimorando todo o currículo...</span>
+                      <span>Aprimorando redação profissional...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-3.5 h-3.5 text-blue-900" />
-                      <span>Executar Aprimoramento com o Fast</span>
+                      <span>Aplicar Revisão Profissional ATS</span>
                     </>
                   )}
                 </button>
@@ -807,7 +840,7 @@ export function Step6Review({
         {/* =========================================================================
            SLIDE 4: CONCLUSÃO & DOWNLOAD DO PDF
            ========================================================================= */}
-        <div className="min-w-full snap-start bg-emerald-50/60 border border-emerald-300 rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4">
+        <div className="w-full min-w-full max-w-full snap-start bg-emerald-50/60 border border-emerald-300 rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4 overflow-hidden">
           <div>
             <div className="flex items-center justify-between pb-2 border-b border-emerald-200">
               <div className="flex items-center gap-2">

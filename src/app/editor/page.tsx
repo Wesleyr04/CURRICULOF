@@ -431,7 +431,7 @@ function EditorContent() {
 
       <div className="flex-1 max-w-[1600px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-0 print:block print:max-w-none print:overflow-visible">
         <div
-          className={`no-print lg:col-span-6 xl:col-span-5 bg-white border-r border-slate-200 p-4 sm:p-8 pb-16 ${
+          className={`no-print lg:col-span-6 xl:col-span-5 bg-white border-r border-slate-200 p-4 sm:p-8 pb-16 min-w-0 max-w-full overflow-x-hidden ${
             mobileTab === "preview" ? "hidden lg:block" : "block"
           }`}
         >

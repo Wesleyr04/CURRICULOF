@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Preencha ao menos o cargo pretendido, seu contexto ou sua formação na Etapa 2 para que o Fast possa aprimorar seu currículo.",
+            "Preencha ao menos o cargo pretendido, seu contexto ou sua formação na Etapa 2 para aprimorar seu currículo.",
         },
         { status: 400 }
       );

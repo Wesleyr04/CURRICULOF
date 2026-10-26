@@ -108,7 +108,7 @@ export function TechSpecialistLayout({ data }: LayoutProps) {
         {!isHidden("summary") && target.summary && (
           <section>
             <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-900 border-b border-slate-200 pb-1 mb-2">
-              Sobre o Especialista
+              Sobre Você
             </h2>
             <p className="text-xs text-slate-700 leading-relaxed text-justify whitespace-pre-line">
               {target.summary}

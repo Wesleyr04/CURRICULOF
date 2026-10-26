@@ -123,11 +123,11 @@ export function ModernLayout({ data, isPdfView = false }: LayoutProps) {
           </div>
         </div>
 
-        {/* 2. SOBRE MIM */}
+        {/* 2. SOBRE VOCÊ */}
         {showSummary && (
           <div className="space-y-2">
             <h3 className={`text-xs font-bold uppercase tracking-widest ${sidebarTextColor} pb-1 border-b ${sidebarBorderColor}`}>
-              SOBRE MIM
+              SOBRE VOCÊ
             </h3>
             <p className={`text-[11px] ${sidebarMutedTextColor} leading-relaxed text-justify`}>
               {displaySummary}

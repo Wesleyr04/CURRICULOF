@@ -31,6 +31,7 @@ export const TargetInfoSchema = z.object({
   careerStage: CareerStageSchema.optional().default("experienced"),
   careerContext: z.string().max(500).optional().default(""),
   summary: z.string().max(1200, "Resumo profissional muito extenso").optional().default(""),
+  summaryTouched: z.boolean().optional(),
 });
 
 export const ExperienceItemSchema = z.object({

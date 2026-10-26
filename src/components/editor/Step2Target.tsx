@@ -23,19 +23,19 @@ const CAREER_STAGE_OPTIONS: Array<{
   {
     id: "experienced",
     label: "Já atuo / tenho experiência nesta área",
-    description: "O Fast vai destacar seu domínio técnico, ferramentas, resultados e maturidade profissional.",
+    description: "Foco em domínio técnico, ferramentas, resultados e maturidade profissional.",
     icon: Briefcase,
   },
   {
     id: "entry_level",
     label: "Buscando primeiro emprego / estágio nesta área",
-    description: "O Fast vai destacar sua iniciativa, facilidade de aprendizado e base educacional/cursos.",
+    description: "Foco em iniciativa, facilidade de aprendizado e base educacional/cursos.",
     icon: GraduationCap,
   },
   {
     id: "career_transition",
     label: "Estou em transição de carreira (vim de outra área)",
-    description: "O Fast vai extrair habilidades transferíveis das suas experiências anteriores para o novo cargo.",
+    description: "Foco em habilidades transferíveis das suas experiências anteriores para o novo cargo.",
     icon: RefreshCw,
   },
 ];
@@ -90,7 +90,7 @@ export function Step2Target({ data, onChange, onNext, onPrev }: Step2Props) {
       <div>
         <h2 className="text-xl font-bold text-slate-900">Etapa 2 — Cargo Pretendido & Objetivo</h2>
         <p className="text-xs text-slate-500 mt-1">
-          Defina o foco da sua candidatura. Essas informações guiam o alinhamento de todo o seu currículo e o direcionamento do Fast.
+          Defina o foco da sua candidatura. Essas informações guiam o alinhamento e o direcionamento profissional de todo o seu currículo.
         </p>
       </div>
 
@@ -157,22 +157,22 @@ export function Step2Target({ data, onChange, onNext, onPrev }: Step2Props) {
         </div>
       </div>
 
-      {/* 3. Como o Fast vai usar isso & Contexto Adicional (Gasto ZERO de tokens nesta etapa) */}
+      {/* 3. Como essa informação é utilizada & Contexto Adicional (Gasto ZERO de tokens nesta etapa) */}
       <div className="space-y-3">
-        {/* Card Informativo: O Fast vai usar isso para: */}
+        {/* Card Informativo: Como essa informação é utilizada: */}
         <div className="p-3.5 bg-blue-50/60 border border-blue-200 rounded-xl flex items-start gap-2.5 text-blue-950 text-xs">
           <Lightbulb className="w-4 h-4 text-blue-800 shrink-0 mt-0.5" />
           <div className="leading-relaxed">
-            <span className="font-bold text-blue-900 block mb-0.5">O Fast vai usar isso para:</span>
-            Adaptar a apresentação do seu perfil e destacar suas experiências anteriores em total alinhamento com o cargo que você busca. A seção <strong>Sobre você</strong> oficial será gerada na <strong>Etapa 6</strong>, conectando com precisão todo o histórico que você preencherá a seguir.
+            <span className="font-bold text-blue-900 block mb-0.5">Como essa informação é utilizada:</span>
+            Adapta a apresentação do seu perfil e destaca suas experiências anteriores em total alinhamento com o cargo pretendido. A seção <strong>Sobre você</strong> oficial será estruturada na <strong>Etapa 6</strong>, conectando com precisão todo o histórico que você preencher a seguir.
           </div>
         </div>
 
-        {/* Input: Contexto ou foco adicional para o Fast (Opcional) */}
+        {/* Input: Contexto ou foco adicional (Opcional) */}
         <div>
           <div className="flex items-center justify-between gap-2 mb-1">
             <label htmlFor="targetCareerContext" className="block text-xs font-bold text-slate-700">
-              Contexto adicional para o Fast <span className="text-slate-400 font-normal">(Opcional)</span>
+              Contexto ou foco adicional <span className="text-slate-400 font-normal">(Opcional)</span>
             </label>
             <span className="text-[10px] text-slate-400">
               {(data.careerContext || "").length}/500
@@ -188,7 +188,7 @@ export function Step2Target({ data, onChange, onNext, onPrev }: Step2Props) {
             className="w-full p-3 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-800 text-slate-900 leading-relaxed shadow-2xs"
           />
           <p className="mt-1 text-[11px] text-slate-500">
-            Destaque qualquer nuance que queira que o Fast considere ao estruturar sua apresentação e refinar suas atividades na etapa final.
+            Destaque qualquer nuance ou ponto forte para considerar ao estruturar sua apresentação profissional e refinar suas atividades na etapa final.
           </p>
         </div>
       </div>
