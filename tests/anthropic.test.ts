@@ -81,6 +81,30 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
       expect(service.providerName).toBe("Anthropic Claude (Oficial)");
     });
 
+    it("deve instanciar Anthropic Claude Oficial quando a chave for sk-ant-usr- (emitindo aviso de diagnóstico)", () => {
+      process.env.AI_PROVIDER = "anthropic";
+      process.env.ANTHROPIC_API_KEY = "sk-ant-usr-1xzBUcpfSidS68aujEYxe-fake";
+
+      const service = getAIService();
+      expect(service).toBeInstanceOf(AnthropicClientService);
+      expect(service.providerName).toBe("Anthropic Claude (Oficial)");
+    });
+
+    it("deve reconhecer variáveis cadastradas em português pelo painel traduzido (ex: PROVEDOR DE IA e MODELO_ANTRÓPICO)", () => {
+      delete process.env.AI_PROVIDER;
+      delete process.env.ANTHROPIC_MODEL;
+      process.env["PROVEDOR DE IA"] = "anthropic";
+      process.env["MODELO_ANTRÓPICO"] = "claude-3-5-haiku-20241022";
+      process.env.ANTHROPIC_API_KEY = "sk-ant-test-key-ptbr";
+
+      const service = getAIService();
+      expect(service).toBeInstanceOf(AnthropicClientService);
+      expect(service.providerName).toBe("Anthropic Claude (Oficial)");
+
+      delete process.env["PROVEDOR DE IA"];
+      delete process.env["MODELO_ANTRÓPICO"];
+    });
+
     it("deve assumir anthropic automaticamente se ANTHROPIC_API_KEY estiver presente mesmo sem AI_PROVIDER", () => {
       delete process.env.AI_PROVIDER;
       process.env.ANTHROPIC_API_KEY = "sk-ant-test-key-auto";
@@ -529,15 +553,15 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
 
     it("Os diagnósticos identificam corretamente o provedor efetivo sem revelar credenciais", () => {
       process.env.AI_PROVIDER = "anthropic";
-      process.env.ANTHROPIC_API_KEY = "sk-ant-usr-1-secretlongkey9876543210abcdef";
+      process.env.ANTHROPIC_API_KEY = "sk-ant-api03-1-secretlongkey9876543210abcdef";
       const service = new AnthropicClientService();
       const diag = service.getAuthDiagnostics();
 
       expect(diag.providerMode).toBe("Anthropic Claude (Oficial)");
       expect(diag.targetUrl).toBe("https://api.anthropic.com/v1/messages");
-      expect(diag.keyPrefix).toBe("sk-ant-usr");
+      expect(diag.keyPrefix).toBe("sk-ant-api");
       expect(diag.keySuffix).toBe("cdef");
-      expect(diag.keyLength).toBe("sk-ant-usr-1-secretlongkey9876543210abcdef".length);
+      expect(diag.keyLength).toBe("sk-ant-api03-1-secretlongkey9876543210abcdef".length);
       // NUNCA expõe a chave completa
       expect(JSON.stringify(diag)).not.toContain("secretlongkey9876543210");
     });

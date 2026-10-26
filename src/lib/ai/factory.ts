@@ -6,7 +6,14 @@ import { AnthropicClientService } from "./anthropic-client-service";
 import { AIConfigurationError } from "./errors";
 
 export function getAIService(): IAIService {
-  const provider = (process.env.AI_PROVIDER || "")
+  const rawProvider =
+    process.env.AI_PROVIDER ||
+    process.env["PROVEDOR DE IA"] ||
+    process.env["PROVEDOR_DE_IA"] ||
+    process.env["PROVEDOR_IA"] ||
+    "";
+
+  const provider = rawProvider
     .replace(/[\r\n"']/g, "")
     .toLowerCase()
     .trim();
@@ -46,13 +53,25 @@ export function getAIService(): IAIService {
         "AI_PROVIDER está configurado como 'openrouter', mas OPENROUTER_API_KEY não foi configurada no ambiente."
       );
     }
-    const rawModel = (process.env.OPENROUTER_MODEL || process.env.ANTHROPIC_MODEL || "").replace(/[\r\n"']/g, "").trim();
+    const rawModel = (
+      process.env.OPENROUTER_MODEL ||
+      process.env.ANTHROPIC_MODEL ||
+      process.env["MODELO_ANTRÓPICO"] ||
+      process.env["MODELO_ANTROPICO"] ||
+      ""
+    ).replace(/[\r\n"']/g, "").trim();
     return new AnthropicClientService(openrouterKey, rawModel || undefined, "OPENROUTER_API_KEY", true);
   }
 
   // 5. Provedor Anthropic Oficial (Padrão quando AI_PROVIDER=anthropic ou quando AI_PROVIDER não estiver definido)
   // Regras 3, 4, 5 e 6: Exige ANTHROPIC_API_KEY e NUNCA faz fallback silencioso para OPENROUTER_API_KEY.
-  const rawKey = (process.env.ANTHROPIC_API_KEY || "").replace(/[\r\n"']/g, "").trim();
+  const rawKey = (
+    process.env.ANTHROPIC_API_KEY ||
+    process.env["CHAVE_ANTROPICA"] ||
+    process.env["CHAVE_ANTHROPIC"] ||
+    ""
+  ).replace(/[\r\n"']/g, "").trim();
+
   if (!rawKey) {
     throw new AIConfigurationError(
       "ANTHROPIC_API_KEY ausente no ambiente do servidor. Configure ANTHROPIC_API_KEY no painel de deploy."
@@ -65,7 +84,13 @@ export function getAIService(): IAIService {
     );
   }
 
-  const rawModel = (process.env.ANTHROPIC_MODEL || "").replace(/[\r\n"']/g, "").trim();
+  const rawModel = (
+    process.env.ANTHROPIC_MODEL ||
+    process.env["MODELO_ANTRÓPICO"] ||
+    process.env["MODELO_ANTROPICO"] ||
+    ""
+  ).replace(/[\r\n"']/g, "").trim();
+
   return new AnthropicClientService(rawKey, rawModel || undefined, "ANTHROPIC_API_KEY", false);
 }
 

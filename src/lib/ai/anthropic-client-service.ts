@@ -44,7 +44,13 @@ export class AnthropicClientService implements IAIService {
     sourceEnv?: "ANTHROPIC_API_KEY" | "OPENROUTER_API_KEY" | "explicit_arg",
     forceOpenRouter?: boolean
   ) {
-    const envProvider = (process.env.AI_PROVIDER || "").replace(/[\r\n"']/g, "").toLowerCase().trim();
+    const rawEnvProvider =
+      process.env.AI_PROVIDER ||
+      process.env["PROVEDOR DE IA"] ||
+      process.env["PROVEDOR_DE_IA"] ||
+      process.env["PROVEDOR_IA"] ||
+      "";
+    const envProvider = rawEnvProvider.replace(/[\r\n"']/g, "").toLowerCase().trim();
 
     // Requisito 1: Precedência absoluta de AI_PROVIDER=anthropic sobre forceOpenRouter
     if (envProvider === "anthropic" && forceOpenRouter === true) {
@@ -62,12 +68,18 @@ export class AnthropicClientService implements IAIService {
     let resolvedSource: "ANTHROPIC_API_KEY" | "OPENROUTER_API_KEY" | "explicit_arg" | "unknown" = "unknown";
     let rawKey = "";
 
+    const envAnthropicKey =
+      process.env.ANTHROPIC_API_KEY ||
+      process.env["CHAVE_ANTROPICA"] ||
+      process.env["CHAVE_ANTHROPIC"] ||
+      "";
+
     if (apiKey) {
       rawKey = apiKey;
       resolvedSource = sourceEnv || "explicit_arg";
     } else if (envProvider === "anthropic") {
       // Quando AI_PROVIDER=anthropic, busca exclusivamente ANTHROPIC_API_KEY
-      rawKey = process.env.ANTHROPIC_API_KEY || "";
+      rawKey = envAnthropicKey;
       resolvedSource = "ANTHROPIC_API_KEY";
     } else if (envProvider === "openrouter" || forceOpenRouter === true) {
       // Quando AI_PROVIDER=openrouter ou forceOpenRouter=true (sem conflito), busca OPENROUTER_API_KEY
@@ -75,7 +87,7 @@ export class AnthropicClientService implements IAIService {
       resolvedSource = "OPENROUTER_API_KEY";
     } else {
       // Quando AI_PROVIDER estiver ausente: padrão é Anthropic oficial
-      rawKey = process.env.ANTHROPIC_API_KEY || "";
+      rawKey = envAnthropicKey;
       resolvedSource = "ANTHROPIC_API_KEY";
     }
 
@@ -130,11 +142,17 @@ export class AnthropicClientService implements IAIService {
     }
 
     // Regra 8: Modelo configurável via ANTHROPIC_MODEL (permite claude-3-5-haiku-latest, claude-3-7-sonnet-latest, etc.)
+    const envAnthropicModel =
+      process.env.ANTHROPIC_MODEL ||
+      process.env["MODELO_ANTRÓPICO"] ||
+      process.env["MODELO_ANTROPICO"] ||
+      "claude-3-5-haiku-20241022";
+
     const rawModel =
       model ||
       (this.isOpenRouter
         ? process.env.OPENROUTER_MODEL || "anthropic/claude-3.5-haiku"
-        : process.env.ANTHROPIC_MODEL || "claude-3-5-haiku-20241022");
+        : envAnthropicModel);
     const cleanModel = (typeof rawModel === "string" ? rawModel : "").replace(/[\r\n"']/g, "").trim();
 
     if (!cleanModel) {

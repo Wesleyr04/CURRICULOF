@@ -45,14 +45,20 @@ export function sanitizeAiErrorMessage(rawError: unknown): string {
     return "Serviço de IA temporariamente indisponível. Você pode editar seu texto manualmente e baixar seu currículo normalmente.";
   }
 
+  // Extrai mensagem interna de erros de SDKs (Anthropic, OpenRouter, etc.)
+  const errObj = typeof rawError === "object" && rawError !== null ? (rawError as Record<string, unknown>) : null;
+  const nestedError = errObj && typeof errObj.error === "object" && errObj.error !== null ? (errObj.error as Record<string, unknown>) : null;
+  const innerMsg = typeof nestedError?.message === "string" ? nestedError.message : undefined;
+
   const msg =
-    typeof rawError === "string"
+    innerMsg ||
+    (typeof rawError === "string"
       ? rawError
       : rawError instanceof Error
       ? rawError.message
-      : typeof rawError === "object" && rawError && "message" in rawError && typeof (rawError as { message: unknown }).message === "string"
-      ? (rawError as { message: string }).message
-      : String(rawError);
+      : typeof errObj?.message === "string"
+      ? errObj.message
+      : String(rawError));
 
   const clean = msg.trim();
 
@@ -71,9 +77,25 @@ export function sanitizeAiErrorMessage(rawError: unknown): string {
     return "Serviço de IA temporariamente indisponível ou em manutenção no provedor. Você pode preencher seu texto manualmente e prosseguir normalmente com o download do currículo.";
   }
 
+  // 1.1 Falta de créditos ou saldo esgotado na conta do provedor
+  if (
+    clean.includes("credit_balance_too_low") ||
+    clean.includes("balance is too low") ||
+    clean.includes("credit balance")
+  ) {
+    return "A conta do provedor de inteligência artificial está com saldo de créditos zerado ou insuficiente. Recarregue seus créditos no console da Anthropic.";
+  }
+
+  // 1.2 Modelo inexistente ou não disponível no workspace
+  if (
+    (clean.includes("model") || clean.includes("not_found")) &&
+    (clean.includes("not found") || clean.includes("not_found") || clean.includes("does not exist") || clean.includes("NotFoundError"))
+  ) {
+    return "O modelo de inteligência artificial solicitado não está ativo ou não foi localizado no workspace da Anthropic.";
+  }
+
   // 2. Erros de rede, conexão ou gateways HTTP
   const hasNetworkError =
-    clean.includes("404") ||
     clean.includes("502") ||
     clean.includes("503") ||
     clean.includes("504") ||
