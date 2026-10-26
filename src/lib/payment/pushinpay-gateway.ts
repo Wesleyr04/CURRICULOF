@@ -45,12 +45,15 @@ export class PushinPayGateway implements IPaymentGateway {
     this.token = (
       token ||
       process.env.PUSHINPAY_TOKEN ||
+      process.env.PUSHINPAY_API_KEY ||
+      process.env.PUSHIN_PAY_TOKEN ||
       ""
     ).replace(/[\r\n"']/g, "").trim();
 
     this.webhookSecret = (
       webhookSecret ||
       process.env.PUSHINPAY_WEBHOOK_SECRET ||
+      process.env.PUSHINPAY_SECRET ||
       ""
     ).replace(/[\r\n"']/g, "").trim();
   }

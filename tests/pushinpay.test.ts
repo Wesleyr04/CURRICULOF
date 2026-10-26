@@ -162,6 +162,34 @@ describe("Gateway PushinPay e Segurança de Pagamento Pix", () => {
     expect(gateway.isMock).toBe(true);
   });
 
+  it("getPaymentGateway factory deve auto-ativar PushinPayGateway se PAYMENT_GATEWAY for omitido mas PUSHINPAY_TOKEN estiver presente", () => {
+    delete process.env.PAYMENT_GATEWAY;
+    process.env.PUSHINPAY_TOKEN = "token_auto_detect_123";
+    const gateway = getPaymentGateway();
+    expect(gateway).toBeInstanceOf(PushinPayGateway);
+  });
+
+  it("getPaymentGateway factory deve aceitar PUSHINPAY_API_KEY como alias e auto-ativar se PAYMENT_GATEWAY estiver vazio", () => {
+    delete process.env.PAYMENT_GATEWAY;
+    delete process.env.PUSHINPAY_TOKEN;
+    process.env.PUSHINPAY_API_KEY = "key_auto_detect_456";
+    const gateway = getPaymentGateway();
+    expect(gateway).toBeInstanceOf(PushinPayGateway);
+  });
+
+  it("getPaymentGateway factory deve aceitar PAYMENT_PROVIDER como alias de PAYMENT_GATEWAY", () => {
+    delete process.env.PAYMENT_GATEWAY;
+    process.env.PAYMENT_PROVIDER = "pushinpay";
+    const gateway = getPaymentGateway();
+    expect(gateway).toBeInstanceOf(PushinPayGateway);
+  });
+
+  it("getPaymentGateway factory deve respeitar PAYMENT_GATEWAY=none e lançar 501 mesmo se houver chave configurada", () => {
+    process.env.PAYMENT_GATEWAY = "none";
+    process.env.PUSHINPAY_TOKEN = "token_ignorado_pois_none";
+    expect(() => getPaymentGateway()).toThrow("501 Not Implemented: Provedor de pagamento pendente.");
+  });
+
   it("orderStore deve suportar getOrderAsync, updateOrderPaymentId e markAsPaidAsync", async () => {
     const order = orderStore.createOrder("temp_test_kv", FIXED_PRICE_IN_CENTS);
     expect(order.orderId).toBeTruthy();
