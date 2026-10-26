@@ -778,16 +778,58 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
       expect(body.error).toContain("temporariamente indisponível");
     });
 
-    // 6. Modelo inválido ou erro definitivo
-    it("6. Modelo inválido ou erro definitivo (HTTP 404/400) não deve disparar retries e deve falhar imediatamente", async () => {
+    // 6. Contingência de modelo e erro definitivo
+    it("6a. Se o modelo configurado retornar NotFoundError (model not found), deve acionar contingência imediata para claude-3-haiku e concluir com sucesso", async () => {
       // Normalização prévia de modelo corrige claude-haiku-5-5 para oficial
       expect(normalizeAnthropicModel("claude-haiku-5-5")).toBe("claude-3-5-haiku-20241022");
       expect(normalizeAnthropicModel("claude-3.5-haiku")).toBe("claude-3-5-haiku-20241022");
       expect(normalizeAnthropicModel("claude-haiku")).toBe("claude-3-haiku-20240307");
 
-      // Erro definitivo retornado pela API (HTTP 404 - NotFoundError)
+      // Primeira chamada: falha porque claude-3-5-haiku-20241022 não está ativo no workspace (404 NotFoundError)
       mockCreate.mockRejectedValueOnce(
-        Object.assign(new Error("model not found"), {
+        Object.assign(new Error("model: claude-3-5-haiku-20241022 not found"), {
+          status: 404,
+          name: "NotFoundError",
+        })
+      );
+
+      // Segunda chamada (contingência para claude-3-haiku-20240307): sucesso
+      mockCreate.mockResolvedValueOnce({
+        id: "msg_fallback_model_success",
+        model: "claude-3-haiku-20240307",
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "Profissional de Cibersegurança em início de carreira com foco em SOC." }],
+      });
+
+      const service = new AnthropicClientService("sk-ant-valid-key", "claude-3-5-haiku-20241022");
+      const result = await service.suggestSummary({
+        jobTitle: "Analista de SOC",
+        field: "Cibersegurança",
+      });
+
+      expect(result).toBe("Profissional de Cibersegurança em início de carreira com foco em SOC.");
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+      expect(mockCreate).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ model: "claude-3-5-haiku-20241022" })
+      );
+      expect(mockCreate).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ model: "claude-3-haiku-20240307" })
+      );
+    });
+
+    it("6b. Se ambos os modelos retornarem model not found, deve propagar o erro definitivo de modelo", async () => {
+      // Primeira tentativa falha
+      mockCreate.mockRejectedValueOnce(
+        Object.assign(new Error("model: claude-3-5-haiku-20241022 not found"), {
+          status: 404,
+          name: "NotFoundError",
+        })
+      );
+      // Segunda tentativa (fallback) também falha
+      mockCreate.mockRejectedValueOnce(
+        Object.assign(new Error("model: claude-3-haiku-20240307 not found"), {
           status: 404,
           name: "NotFoundError",
         })
@@ -799,9 +841,27 @@ describe("Integração Anthropic Claude (Serviço, Factory e Erros)", () => {
           jobTitle: "Desenvolvedor",
           field: "TI",
         })
-      ).rejects.toThrow("model not found");
+      ).rejects.toThrow("model: claude-3-5-haiku-20241022 not found");
 
-      // Deve falhar na primeira chamada sem retries
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+    });
+
+    it("6c. Erro definitivo de requisição (HTTP 400 sem relação com modelo) deve falhar imediatamente na 1ª chamada", async () => {
+      mockCreate.mockRejectedValueOnce(
+        Object.assign(new Error("max_tokens must be <= 4096"), {
+          status: 400,
+          name: "BadRequestError",
+        })
+      );
+
+      const service = new AnthropicClientService("sk-ant-valid-key", "claude-3-5-haiku-20241022");
+      await expect(
+        service.suggestSummary({
+          jobTitle: "Desenvolvedor",
+          field: "TI",
+        })
+      ).rejects.toThrow("max_tokens must be <= 4096");
+
       expect(mockCreate).toHaveBeenCalledTimes(1);
     });
 

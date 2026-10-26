@@ -483,14 +483,51 @@ export class AnthropicClientService implements IAIService {
           headers?: Headers | Record<string, string | string[] | undefined>;
         };
         const status = errObj?.status || 0;
+        const rawErrMsg = typeof (firstErr as Error)?.message === "string" ? (firstErr as Error).message : "";
+        const rawErrDetail = typeof errObj?.error?.message === "string" ? errObj.error.message : "";
+        const combinedErr = `${rawErrMsg} ${rawErrDetail}`.toLowerCase();
+
+        // 1. Contingência para modelo não encontrado ou inativo no workspace da Anthropic (HTTP 404 / 400)
+        const isModelNotFound =
+          (status === 404 || status === 400 || (firstErr as Error)?.name === "NotFoundError") &&
+          (combinedErr.includes("model") || combinedErr.includes("not_found") || combinedErr.includes("not found"));
+
+        if (isModelNotFound) {
+          const fallbackModel =
+            targetModel === "claude-3-haiku-20240307"
+              ? "claude-3-5-haiku-20241022"
+              : "claude-3-haiku-20240307";
+
+          console.warn(
+            `[AnthropicClientService] Modelo '${targetModel}' não localizado no workspace da Anthropic (${rawErrMsg || rawErrDetail}). Acionando contingência de modelo para '${fallbackModel}'...`
+          );
+
+          try {
+            const fallbackResponse = await this.client!.messages.create({
+              model: fallbackModel,
+              max_tokens: maxTokens,
+              system: AI_SYSTEM_INSTRUCTIONS,
+              messages: [{ role: "user", content: promptText }],
+            });
+
+            // Atualiza o modelo ativo da instância para as requisições subsequentes
+            this.model = fallbackModel;
+            return fallbackResponse;
+          } catch (fallbackErr: unknown) {
+            console.error(
+              `[AnthropicClientService] Contingência de modelo para '${fallbackModel}' também falhou. Propagando erro original.`
+            );
+            throw firstErr;
+          }
+        }
+
         const isTransient =
           status === 529 ||
           status === 503 ||
           status === 500 ||
-          (typeof (firstErr as Error)?.message === "string" &&
-            ((firstErr as Error).message.includes("529") ||
-              (firstErr as Error).message.includes("Overloaded") ||
-              (firstErr as Error).message.includes("overloaded_error")));
+          combinedErr.includes("529") ||
+          combinedErr.includes("overloaded") ||
+          combinedErr.includes("overloaded_error");
 
         // Se for erro definitivo (400, 401, 403, 404, 422), não retenta e lança imediatamente
         if (!isTransient) {
