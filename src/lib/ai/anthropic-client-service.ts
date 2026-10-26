@@ -550,8 +550,38 @@ export class AnthropicClientService implements IAIService {
             }
           }
 
+          // Se todos os modelos pré-definidos falharam, consulta dinamicamente /v1/models para auto-descoberta
+          try {
+            console.log("[AnthropicClientService] Consultando /v1/models da Anthropic para auto-descoberta de modelos permitidos...");
+            const modelsPage = await this.client!.models.list({ limit: 20 });
+            const availableModels = (modelsPage as any)?.data || [];
+            const modelIds: string[] = availableModels.map((m: any) => m?.id).filter(Boolean);
+            console.warn("[AnthropicClientService] Modelos ativos retornados por /v1/models para esta chave:", modelIds);
+
+            if (modelIds.length > 0) {
+              const dynamicCandidate = modelIds[0];
+              console.log(`[AnthropicClientService] Tentando modelo dinâmico auto-descoberto '${dynamicCandidate}'...`);
+              const dynamicResponse = await this.client!.messages.create({
+                model: dynamicCandidate,
+                max_tokens: maxTokens,
+                system: AI_SYSTEM_INSTRUCTIONS,
+                messages: [{ role: "user", content: promptText }],
+              });
+              this.model = dynamicCandidate;
+              return dynamicResponse;
+            } else {
+              console.error("[AnthropicClientService] O workspace da Anthropic retornou ZERO modelos ativos para esta chave de API.");
+            }
+          } catch (listErr: unknown) {
+            console.error("[AnthropicClientService] Falha ao consultar endpoint /v1/models:", {
+              status: (listErr as any)?.status,
+              message: (listErr as any)?.message,
+              error: (listErr as any)?.error,
+            });
+          }
+
           console.error(
-            `[AnthropicClientService] Todos os modelos de contingência foram rejeitados pela Anthropic. Propagando erro.`
+            `[AnthropicClientService] Todos os modelos de contingência e auto-descoberta foram rejeitados pela Anthropic. Propagando erro.`
           );
           throw lastCandidateErr;
         }

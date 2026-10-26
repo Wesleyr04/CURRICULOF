@@ -21,6 +21,9 @@ vi.mock("@anthropic-ai/sdk", () => {
     messages = {
       create: mockCreate,
     };
+    models = {
+      list: vi.fn().mockResolvedValue({ data: [] }),
+    };
     constructor(public options?: any) {}
   }
 
