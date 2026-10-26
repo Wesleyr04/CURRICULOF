@@ -18,8 +18,13 @@ export function getAIService(): IAIService {
     .toLowerCase()
     .trim();
 
-  // 1. O MockAIService SÓ é retornado se AI_PROVIDER for explicitamente declarado como 'mock'
+  // 1. O MockAIService é estritamente proibido em ambiente de produção
   if (provider === "mock") {
+    if (process.env.NODE_ENV === "production") {
+      throw new AIConfigurationError(
+        "O provedor 'mock' é estritamente proibido em ambiente de produção. Configure ANTHROPIC_API_KEY para a integração oficial."
+      );
+    }
     return new MockAIService();
   }
 

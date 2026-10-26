@@ -247,14 +247,20 @@ export function Step6Review({
         .map((c) => c.trim().slice(0, 100))
         .slice(0, 10);
 
-      // Se o campo summary estiver vazio, utiliza o contexto da Etapa 2 como rascunho de partida
-      const baseSummaryDraft =
-        (typeof resumeData.target?.summary === "string" && resumeData.target.summary.trim().length > 0
-          ? resumeData.target.summary.trim().slice(0, 1500)
-          : undefined) ||
-        (typeof resumeData.target?.careerContext === "string" && resumeData.target.careerContext.trim().length > 0
+      // Se o usuário digitou um rascunho diretamente no campo summary, ele tem soberania sobre o contexto preliminar da Etapa 2
+      const hasUserSummaryInput = Boolean(
+        typeof resumeData.target?.summary === "string" && resumeData.target.summary.trim().length > 0
+      );
+
+      const baseSummaryDraft = hasUserSummaryInput
+        ? resumeData.target.summary.trim().slice(0, 1500)
+        : (typeof resumeData.target?.careerContext === "string" && resumeData.target.careerContext.trim().length > 0
           ? resumeData.target.careerContext.trim().slice(0, 800)
           : undefined);
+
+      const effectiveCareerContext = hasUserSummaryInput
+        ? undefined
+        : (resumeData.target.careerContext?.trim() || undefined);
 
       const res = await fetch("/api/ai/suggest-summary", {
         method: "POST",
@@ -263,7 +269,7 @@ export function Step6Review({
           jobTitle: cleanJob,
           field: resumeData.target.field?.trim() || cleanJob,
           careerStage: resumeData.target.careerStage || "experienced",
-          careerContext: resumeData.target.careerContext?.trim() || undefined,
+          careerContext: effectiveCareerContext,
           currentSummary: baseSummaryDraft,
           mode: resumeData.creationMode || "simple",
           experiences: cleanExperiences,

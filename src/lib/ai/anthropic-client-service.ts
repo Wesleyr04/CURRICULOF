@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import crypto from "crypto";
 import { IAIService, AISuggestSummaryParams, AIImproveTextParams } from "./types";
 import { ResumeData, CreationMode } from "@/types/resume";
-import { normalizeJobTitle } from "./mock-service";
+import { normalizeJobTitle } from "@/lib/utils/job-title";
 import { buildSuggestSummaryPrompt, buildImproveTextPrompt, AI_SYSTEM_INSTRUCTIONS } from "./prompts";
 import {
   AIConfigurationError,

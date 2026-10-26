@@ -76,9 +76,10 @@ export function buildSuggestSummaryPrompt(params: AISuggestSummaryParams): strin
   let promptTask = "";
   if (hasCurrentSummary) {
     promptTask = `TAREFA:
-O candidato já redigiu ou aprovou um resumo profissional estratégico. Sua missão é APRIMORAR e PROFISSIONALIZAR o texto fornecido pelo candidato, preservando rigorosamente as experiências, preferências e fatos reais que ele descreveu.
+O candidato já redigiu ou aprovou um resumo profissional estratégico. Sua missão é APRIMORAR e PROFISSIONALIZAR o texto fornecido pelo candidato, preservando rigorosamente as experiências, preferências, área de interesse e fatos reais que ele descreveu.
 ${targetLengthGuideline}
 ${careerStageGuideline}
+SOBERANIA DA INTENÇÃO DO CANDIDATO: Se o rascunho do candidato expressar um objetivo, área ou carreira desejada específica (mesmo que diferente do cargo inicial ou do contexto preliminar de etapas anteriores), DÊ PRIORIDADE MÁXIMA à intenção expressa no rascunho. Estruture uma apresentação corporativa impecável centrada exatamente no objetivo que o candidato escreveu.
 Elimine informalidades ou erros de gramática, normalize termos técnicos e adeque o tom para o padrão corporativo de recrutamento, sem descaracterizar a essência ou a estrutura estratégica do resumo já definido pelo usuário.`;
   } else if (hasExperiences) {
     promptTask = `TAREFA:

@@ -1,6 +1,7 @@
 import { IAIService, AISuggestSummaryParams, AIImproveTextParams } from "./types";
 import { ResumeData, CreationMode } from "@/types/resume";
 import { buildSuggestSummaryPrompt, buildImproveTextPrompt, AI_SYSTEM_INSTRUCTIONS } from "./prompts";
+import { AIServiceUnavailableError } from "./errors";
 
 export class GeminiAIService implements IAIService {
   public providerName = "Google Gemini";
@@ -111,10 +112,11 @@ Retorne APENAS o JSON puro, sem crases de código markdown.`;
       }
 
       return updated;
-    } catch {
-      // Se o parse falhar, faz melhoria pontual item por item de forma segura
-      const fallbackMock = new (await import("./mock-service")).MockAIService();
-      return fallbackMock.improveFullResume(resumeData);
+    } catch (err: unknown) {
+      throw new AIServiceUnavailableError(
+        "Falha ao gerar currículo estruturado com Google Gemini: " +
+          (err instanceof Error ? err.message : String(err))
+      );
     }
   }
 }
